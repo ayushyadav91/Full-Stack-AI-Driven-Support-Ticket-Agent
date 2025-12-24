@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
-import jwt, { decode } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
-import { inngest } from "../inngest/client.js";
+import { inngest } from "../AgentEvents/client.js";
 
 export const signup = async (req, res) => {
     try {
