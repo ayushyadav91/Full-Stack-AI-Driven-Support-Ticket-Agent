@@ -1,9 +1,22 @@
-import React from 'react'
+import { Routes, Route } from "react-router-dom";
+import Home from "./pages/Home.jsx"; 
+import { ToastContainer } from 'react-toastify';
+import Dashboard from "./pages/Dashboard.jsx"; 
+export const Serverurl = "http://localhost:3000";
 
-const App = () => {
-  return (
-    <div className='text-xl bg-black'>App</div>
-  )
+
+export default function App() {
+    return (
+        <div>
+            <ToastContainer />
+            <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/dashboard" element={<Dashboard />} /> 
+                {/* <Route path="/about" element={<About />}/> */}
+
+                
+            </Routes>
+            <ToastContainer/>
+        </div>
+    );
 }
-
-export default App

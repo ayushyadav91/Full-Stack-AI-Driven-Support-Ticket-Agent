@@ -6,6 +6,7 @@ import {serve} from "inngest/express";
 import {inngest} from "./AgentEvents/client.js"
 import { onUserSignUp } from './AgentEvents/functions/on-signup.js';
 import { onTicketCreated } from './AgentEvents/functions/on-ticket-create.js';
+import cors from "cors";
 
 
 
@@ -17,7 +18,10 @@ connectDB().then(() => {
     console.log("MongoDB connection error", error);
 });
 
-
+app.use(cors({
+    origin: "http://localhost:5173",
+    credentials: true
+}));
 //middleware
 app.use(express.json({
     limit: '16kb'
