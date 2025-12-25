@@ -1,5 +1,4 @@
 
-
 //importing  
 import express from 'express'
 import { connectDB } from  "./database/db.database.js"
@@ -37,6 +36,11 @@ app.use(
     functions: [onUserSignUp, onTicketCreated],
   })
 );
+//routes
+import  userRouter  from './routes/user.route.js';
+import  ticketRouter from "./routes/ticket.route.js";
+app.use("/api/auth",  userRouter);
+app.use("/api/ticket", ticketRouter);
 
 
 //checking route

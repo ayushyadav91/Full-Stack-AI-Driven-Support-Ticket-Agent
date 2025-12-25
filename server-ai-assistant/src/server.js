@@ -1,11 +1,10 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: '../.env' });
-
+import dotenv from "dotenv";
+dotenv.config({ path: "./.env" });
 import app from './app.js';
 
-console.log(process.env.MONGODB_URI);
+console.log(process.env.MONGO_URI);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)

@@ -1,9 +1,11 @@
-import { createAgent, gemini } from "@inngest/agent-kit";
 
+import { createAgent, gemini } from "@inngest/agent-kit";
+console.log("GEMINI_API_KEY:", process.env.GEMINI_API_KEY);
+console.log("GEMINI_API_KEY:", process.env.GEMINI_API_KEY ? "SET" : "MISSING");
 const analyzeTicket = async (ticket) => {
   const supportAgent = createAgent({
     model: gemini({
-      model: "gemini-1.5-flash-8b",
+      model: 'gemini-2.5-flash',
       apiKey: process.env.GEMINI_API_KEY,
     }),
     name: "AI Ticket Triage Assistant",
@@ -22,9 +24,8 @@ IMPORTANT:
 
 Repeat: Do not wrap your output in markdown or code fences.`,
   });
-
-  const response =
-    await supportAgent.run(`You are a ticket triage agent. Only return a strict JSON object with no extra text, headers, or markdown.
+console.log("supportAgent ye to chal raha hai +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+  const response = await supportAgent.run(`You are a ticket triage agent. Only return a strict JSON object with no extra text, headers, or markdown.
         
 Analyze the following support ticket and provide a JSON object with:
 
@@ -49,12 +50,22 @@ Ticket information:
 - Title: ${ticket.title}
 - Description: ${ticket.description}`);
 
-  const raw = response.output[0].context;
+  const raw =
+  response?.output?.[0]?.content ||
+  response?.output?.[0]?.text ||
+  response?.output?.[0];
+
+if (!raw) {
+  throw new Error("AI did not return any output");
+}
 
   try {
-    const match = raw.match(/```json\s*([\s\S]*?)\s*```/i);
-    const jsonString = match ? match[1] : raw.trim();
-    return JSON.parse(jsonString);
+    // const match = raw.match(/```json\s*([\s\S]*?)\s*```/i);
+    // const jsonString = match ? match[1] : raw.trim(); 
+
+    console.log("JSON parsed successfully");
+    return JSON.parse(raw.trim());
+   
   } catch (e) {
     console.log("Failed to parse JSON from AI response" + e.message);
     return null; // watch out for this

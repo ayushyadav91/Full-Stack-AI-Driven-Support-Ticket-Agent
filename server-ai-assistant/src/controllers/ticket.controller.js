@@ -1,5 +1,7 @@
 import { inngest } from "../AgentEvents/client.js";
 import Ticket from "../models/ticket.model.js";
+import mongoose from "mongoose";
+
 
 export const createTicket = async (req, res) => {
   try {
@@ -75,6 +77,33 @@ export const getTicket = async (req, res) => {
     }
 
     return res.status(200).json({ ticket });
+
+    //   const ticketId = req.params.id;
+
+    // // ✅ Validate MongoDB ObjectId
+    // if (!mongoose.Types.ObjectId.isValid(ticketId)) {
+    //   return res.status(400).json({ message: "Invalid ticket ID" });
+    // }
+
+    // let ticket;
+
+    // if (user.role !== "user") {
+    //   ticket = await Ticket.findById(ticketId).populate(
+    //     "assignedTo",
+    //     "email _id"
+    //   );
+    // } else {
+    //   ticket = await Ticket.findOne({
+    //     _id: ticketId,
+    //     createdBy: user._id,
+    //   }).select("title description status createdAt");
+    // }
+
+    // if (!ticket) {
+    //   return res.status(404).json({ message: "Ticket not found" });
+    // }
+
+    // return res.status(200).json({ ticket });
   } catch (error) {
     console.error("Error fetching ticket", error.message);
     return res.status(500).json({ message: "Internal Server Error" });

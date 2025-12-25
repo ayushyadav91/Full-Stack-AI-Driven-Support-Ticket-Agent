@@ -1,39 +1,44 @@
+import dotenv from "dotenv";
+dotenv.config();
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../models/user.model.js";
 import { inngest } from "../AgentEvents/client.js";
+import  {sendEmail} from "../services/mailer.js";
 
 export const signup = async (req, res) => {
-    try {
-        const { email, password,skills = [] } = req.body;
-        const user = await User.findOne({ email });
-        if (user) {
-            return res.status(400).json({ message: "User already exists" });
-        }
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = await User.create({
-             email,
-             password: hashedPassword,
-              skills });
-
-        // Trigger Inngest event
-        await inngest.send(
-            { name:"/user/signup", 
-                data: { email: newUser.email }
-        });
-      const token = jwt.sign({ _id: newUser._id, role: newUser.role }, process.env.JWT_SECRET, {
-            expiresIn: process.env.JWT_EXPIRES_IN ,
-        });
-        res.status(201)
-        .json({
-            token,
-            user: newUser,
-             message: "User created successfully" });
-
-    } catch (error) {
-        console.error("Error:", error);
-        res.status(500).json({ message: "Internal server error" });
+    const { email, password, skills = [] } = req.body;
+  try {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already registered" });
     }
+
+ const hashed = await bcrypt.hash(password, 10);
+//Fire inngest event
+    const user = new User({
+      email,
+      password: hashed,
+      skills,
+    });
+
+    await user.save();
+
+    await inngest.send({
+      name: "user/signup",
+      data: { email },
+    });
+
+    const token = jwt.sign(
+      { _id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN }
+    );
+
+    res.json({ user, token });
+  } catch (error) {
+    res.status(500).json({ error: "Signup failed", details: error.message });
+  }
 };
 
 export const login = async (req, res) => {
@@ -47,9 +52,11 @@ export const login = async (req, res) => {
         if (!isPasswordCorrect) {
             return res.status(401).json({ message: "Invalid email or password" });
         }
-        const token = jwt.sign({ email: user.email }, process.env.JWT_SECRET, {
-            expiresIn: process.env.JWT_EXPIRES_IN ,
-        });
+        const token = jwt.sign(
+  { _id: user._id, email: user.email, role: user.role }, 
+  process.env.JWT_SECRET,
+  { expiresIn: process.env.JWT_EXPIRES_IN }
+);
         res.status(200).json({
              message: "Login successful",
              user,
@@ -88,7 +95,9 @@ export const logout = async (req,res)=>{
 
 export const updateUser = async (req, res)=>{
     const {skills=[], role, email} = req.body;
+    console.log(req.body);
     try{
+        console.log(req.user.role);
        if(req.user?.role !== "admin"){
         return res.status(403).json({message:"Forbidden:Only admin can update user details"});
        } 

@@ -9,9 +9,12 @@ export const onTicketCreated = inngest.createFunction(
   { id: "on-ticket-created", retries: 2 },
   { event: "ticket/created" },
   async ({ event, step }) => {
+    console.log("Event triggerd");
     try {
+
       const { ticketId } = event.data;
 
+     console.log(ticketId)
       //fetch ticket from DB
       const ticket = await step.run("fetch-ticket", async () => {
         const ticketObject = await Ticket.findById(ticketId);
@@ -25,7 +28,10 @@ export const onTicketCreated = inngest.createFunction(
         await Ticket.findByIdAndUpdate(ticket._id, { status: "TODO" });
       });
 
-      const aiResponse = await analyzeTicket(ticket);
+     const aiResponse = await analyzeTicket(ticket).catch(err => {
+     console.error("AI analyze failed:", err.message);
+     return null;
+        });
 
       const relatedskills = await step.run("ai-processing", async () => {
         let skills = [];
@@ -74,7 +80,6 @@ export const onTicketCreated = inngest.createFunction(
           );
         }
       });
-
       return { success: true };
     } catch (err) {
       console.error("❌ Error running the step", err.message);
