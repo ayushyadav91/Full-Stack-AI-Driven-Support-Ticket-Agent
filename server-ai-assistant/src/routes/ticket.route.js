@@ -2,12 +2,12 @@ import express from "express";
 const ticketRouter = express.Router();
 
 import { authenticate } from "../middlewares/auth.middleware.js";
-import {getTicket, getTickets, createTicket} from "../controllers/ticket.controller.js";
+import { getTicket, getTickets, createTicket } from "../controllers/ticket.controller.js";
 
 
-ticketRouter.post("/",authenticate,createTicket);
-ticketRouter.get("/",authenticate,getTickets);
-ticketRouter.get("/:id",authenticate,getTicket);
+ticketRouter.post("/create", authenticate, createTicket);
+ticketRouter.get("/get", authenticate, getTickets);
+ticketRouter.get("/:id", authenticate, getTicket);
 
 
 

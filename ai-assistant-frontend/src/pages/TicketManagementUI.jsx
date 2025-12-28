@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Search, Filter, Clock, AlertCircle, CheckCircle, Send } from 'lucide-react';
-import {Serverurl} from "../App.jsx"
+import { Serverurl } from "../App.jsx"
 
 export default function TicketManagementUI() {
   const [tickets, setTickets] = useState([]);
@@ -16,7 +16,7 @@ export default function TicketManagementUI() {
   const fetchTickets = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch(`${Serverurl}/api/tickets`, {
+      const res = await fetch(`${Serverurl}/api/tickets/get`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -48,7 +48,7 @@ export default function TicketManagementUI() {
 
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch(`${Serverurl}/api/tickets`, {
+      const res = await fetch(`${Serverurl}/api/tickets/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
