@@ -41,7 +41,7 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const token = getToken();
-      const res = await fetch(`${Serverurl}/api/tickets`, {
+      const res = await fetch(`${Serverurl}/api/ticket/get`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -112,7 +112,7 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const token = getToken();
-      const res = await fetch(`${Serverurl}/api/tickets`, {
+      const res = await fetch(`${Serverurl}/api/ticket/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -194,11 +194,10 @@ export default function Dashboard() {
             <button
               key={item.tab}
               onClick={() => setActiveTab(item.tab)}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${
-                activeTab === item.tab
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${activeTab === item.tab
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
                   : 'text-slate-400 hover:text-white hover:bg-slate-700'
-              }`}
+                }`}
             >
               {item.icon}
               {showSidebar && <span>{item.label}</span>}

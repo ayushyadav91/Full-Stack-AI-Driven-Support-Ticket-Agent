@@ -16,7 +16,7 @@ export default function TicketManagementUI() {
   const fetchTickets = async () => {
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch(`${Serverurl}/api/tickets/get`, {
+      const res = await fetch(`${Serverurl}/api/ticket/get`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -48,7 +48,7 @@ export default function TicketManagementUI() {
 
     try {
       const token = localStorage.getItem('authToken');
-      const res = await fetch(`${Serverurl}/api/tickets/create`, {
+      const res = await fetch(`${Serverurl}/api/ticket/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
