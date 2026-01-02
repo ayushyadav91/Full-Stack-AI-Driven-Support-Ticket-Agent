@@ -113,8 +113,8 @@ export default function SignUpPage({ onSignUpSuccess, onSwitchToLogin }) {
       )}
 
       {/* Form */}
-      <div className="space-y-4">
-        <div>
+      <div className="space-y-4" >
+        <div >
           <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
           <div className="relative">
             <Mail size={18} className="absolute left-4 top-3.5 text-slate-400" />
