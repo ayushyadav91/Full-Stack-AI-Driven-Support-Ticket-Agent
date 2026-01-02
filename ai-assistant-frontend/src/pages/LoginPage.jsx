@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Serverurl } from '../App.jsx';
-
+import { toast } from 'react-hot-toast';
 
 // API Call Functions
 const apiCall = {
@@ -29,35 +29,12 @@ const apiCall = {
   login: async (email, password) => {
     return apiCall.post('/api/auth/login', { email, password });
   },
-
-  logout: async (token) => {
-    try {
-      const response = await fetch(`${Serverurl}/api/auth/logout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || error.message || 'Logout failed');
-      }
-
-      return await response.json();
-    } catch (error) {
-      throw error;
-    }
-  },
 };
 
 export default function LoginPage({ onLoginSuccess, onSwitchToSignUp }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [errors, setErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState('');
 
   // Email validation
   const validateEmail = (email) => {
@@ -67,19 +44,21 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignUp }) {
 
   // Login Handler
   const handleLogin = async () => {
-    setErrors({});
-    setSuccessMessage('');
-
     // Frontend Validation
-    const newErrors = {};
-    if (!loginForm.email) newErrors.email = 'Email is required';
-    else if (!validateEmail(loginForm.email)) newErrors.email = 'Invalid email format';
-
-    if (!loginForm.password) newErrors.password = 'Password is required';
-    else if (loginForm.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    if (!loginForm.email) {
+      toast.error('Email is required');
+      return;
+    }
+    if (!validateEmail(loginForm.email)) {
+      toast.error('Invalid email format');
+      return;
+    }
+    if (!loginForm.password) {
+      toast.error('Password is required');
+      return;
+    }
+    if (loginForm.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
       return;
     }
 
@@ -91,9 +70,6 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignUp }) {
       // Store token in localStorage
       localStorage.setItem('authToken', response.token);
 
-      // Set user data
-      setSuccessMessage('Login successful!');
-
       // Clear form
       setLoginForm({ email: '', password: '' });
 
@@ -102,81 +78,72 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignUp }) {
         onLoginSuccess(response.user, response.token);
       }, 500);
     } catch (error) {
-      setErrors({ submit: error.message });
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative p-8">
+    <div className="space-y-6">
       {/* Header */}
-      <h2 className="text-3xl font-bold text-slate-900 mb-2">Sign In</h2>
-      <p className="text-slate-600 mb-8">
-        Don't have an account?{' '}
-        <button onClick={onSwitchToSignUp} className="text-blue-600 font-semibold hover:underline">
-          Sign up
-        </button>
-      </p>
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
-          {successMessage}
-        </div>
-      )}
-
-      {/* Submit Error */}
-      {errors.submit && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-          {errors.submit}
-        </div>
-      )}
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign In</h2>
+        <p className="text-sm text-gray-600">
+          Don't have an account?{' '}
+          <button onClick={onSwitchToSignUp} className="text-indigo-600 font-semibold hover:underline">
+            Sign up
+          </button>
+        </p>
+      </div>
 
       {/* Form */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Email
+          </label>
           <div className="relative">
-            <Mail size={18} className="absolute left-4 top-3.5 text-slate-400" />
+            <Mail size={18} className="absolute left-3 top-3 text-gray-400" />
             <input
               type="email"
+              placeholder="Enter your email"
               value={loginForm.email}
               onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-              placeholder="Enter your email"
-              className="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-slate-900 placeholder-slate-500"
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
             />
           </div>
-          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Password
+          </label>
           <div className="relative">
-            <Lock size={18} className="absolute left-4 top-3.5 text-slate-400" />
+            <Lock size={18} className="absolute left-3 top-3 text-gray-400" />
             <input
               type={showPassword ? 'text' : 'password'}
+              placeholder="Enter your password"
               value={loginForm.password}
               onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-              placeholder="Enter your password"
-              className="w-full pl-12 pr-12 py-3 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-slate-900 placeholder-slate-500"
+              className="w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
             />
             <button
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+              type="button"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
         </div>
 
         <button
           onClick={handleLogin}
           disabled={loading}
-          className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+          className="w-full py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Processing...' : 'Sign In'}
+          {loading ? 'Signing In...' : 'Sign In'}
         </button>
       </div>
     </div>

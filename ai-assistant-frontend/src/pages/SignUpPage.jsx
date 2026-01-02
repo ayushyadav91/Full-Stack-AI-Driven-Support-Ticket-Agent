@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Tag, X } from 'lucide-react';
 import { Serverurl } from '../App.jsx';
+import { toast } from 'react-hot-toast';
 
 // API Call Functions
 const apiCall = {
@@ -35,8 +35,7 @@ export default function SignUpPage({ onSignUpSuccess, onSwitchToLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [signupForm, setSignupForm] = useState({ email: '', password: '', skills: [] });
-  const [errors, setErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState('');
+  const [skillInput, setSkillInput] = useState('');
 
   // Email validation
   const validateEmail = (email) => {
@@ -44,21 +43,38 @@ export default function SignUpPage({ onSignUpSuccess, onSwitchToLogin }) {
     return re.test(email);
   };
 
+  const handleAddSkill = (e) => {
+    if (e.key === 'Enter' && skillInput.trim() && !signupForm.skills.includes(skillInput.trim())) {
+      setSignupForm({ ...signupForm, skills: [...signupForm.skills, skillInput.trim()] });
+      setSkillInput('');
+      e.preventDefault();
+    }
+  };
+
+  const handleRemoveSkill = (skillToRemove) => {
+    setSignupForm({
+      ...signupForm,
+      skills: signupForm.skills.filter(skill => skill !== skillToRemove)
+    });
+  };
+
   // Signup Handler
   const handleSignUp = async () => {
-    setErrors({});
-    setSuccessMessage('');
-
     // Frontend Validation
-    const newErrors = {};
-    if (!signupForm.email) newErrors.email = 'Email is required';
-    else if (!validateEmail(signupForm.email)) newErrors.email = 'Invalid email format';
-
-    if (!signupForm.password) newErrors.password = 'Password is required';
-    else if (signupForm.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    if (!signupForm.email) {
+      toast.error('Email is required');
+      return;
+    }
+    if (!validateEmail(signupForm.email)) {
+      toast.error('Invalid email format');
+      return;
+    }
+    if (!signupForm.password) {
+      toast.error('Password is required');
+      return;
+    }
+    if (signupForm.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
       return;
     }
 
@@ -70,9 +86,6 @@ export default function SignUpPage({ onSignUpSuccess, onSwitchToLogin }) {
       // Store token in localStorage
       localStorage.setItem('authToken', response.token);
 
-      // Set user data
-      setSuccessMessage('Account created successfully!');
-
       // Clear form
       setSignupForm({ email: '', password: '', skills: [] });
 
@@ -81,97 +94,107 @@ export default function SignUpPage({ onSignUpSuccess, onSwitchToLogin }) {
         onSignUpSuccess(response.user, response.token);
       }, 500);
     } catch (error) {
-      setErrors({ submit: error.message });
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative p-8">
+    <div className="space-y-6">
       {/* Header */}
-      <h2 className="text-3xl font-bold text-slate-900 mb-2">Create Account</h2>
-      <p className="text-slate-600 mb-8">
-        Already have an account?{' '}
-        <button onClick={onSwitchToLogin} className="text-blue-600 font-semibold hover:underline">
-          Log in
-        </button>
-      </p>
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm">
-          {successMessage}
-        </div>
-      )}
-
-      {/* Submit Error */}
-      {errors.submit && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-          {errors.submit}
-        </div>
-      )}
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h2>
+        <p className="text-sm text-gray-600">
+          Already have an account?{' '}
+          <button onClick={onSwitchToLogin} className="text-indigo-600 font-semibold hover:underline">
+            Log in
+          </button>
+        </p>
+      </div>
 
       {/* Form */}
-      <div className="space-y-4" >
-        <div >
-          <label className="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Email
+          </label>
           <div className="relative">
-            <Mail size={18} className="absolute left-4 top-3.5 text-slate-400" />
+            <Mail size={18} className="absolute left-3 top-3 text-gray-400" />
             <input
               type="email"
+              placeholder="Enter your email"
               value={signupForm.email}
               onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
-              placeholder="Enter your email"
-              className="w-full pl-12 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-slate-900 placeholder-slate-500"
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
             />
           </div>
-          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Password
+          </label>
           <div className="relative">
-            <Lock size={18} className="absolute left-4 top-3.5 text-slate-400" />
+            <Lock size={18} className="absolute left-3 top-3 text-gray-400" />
             <input
               type={showPassword ? 'text' : 'password'}
+              placeholder="Enter your password (min 6 characters)"
               value={signupForm.password}
               onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
-              placeholder="Enter your password"
-              className="w-full pl-12 pr-12 py-3 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-slate-900 placeholder-slate-500"
+              className="w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
             />
             <button
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+              type="button"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </div>
-          {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-2">Skills (Optional)</label>
-          <input
-            type="text"
-            value={signupForm.skills.join(', ')}
-            onChange={(e) =>
-              setSignupForm({
-                ...signupForm,
-                skills: e.target.value.split(',').map((s) => s.trim()).filter((s) => s),
-              })
-            }
-            placeholder="e.g., Technical, Billing, Support"
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 text-slate-900 placeholder-slate-500"
-          />
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Skills (Optional)
+          </label>
+          <div className="relative">
+            <Tag size={18} className="absolute left-3 top-3 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Add your skills (press Enter)"
+              value={skillInput}
+              onChange={(e) => setSkillInput(e.target.value)}
+              onKeyPress={handleAddSkill}
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+            />
+          </div>
+          {signupForm.skills.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {signupForm.skills.map((skill, index) => (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium"
+                >
+                  {skill}
+                  <button
+                    onClick={() => handleRemoveSkill(skill)}
+                    className="hover:text-indigo-900"
+                  >
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <button
           onClick={handleSignUp}
           disabled={loading}
-          className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+          className="w-full py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Processing...' : 'Sign Up'}
+          {loading ? 'Creating Account...' : 'Sign Up'}
         </button>
       </div>
     </div>

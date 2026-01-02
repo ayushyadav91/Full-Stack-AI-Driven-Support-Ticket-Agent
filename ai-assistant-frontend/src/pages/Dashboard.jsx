@@ -1,11 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { User, LogOut, AlertCircle, Search, Menu, X, Plus, Filter, Clock, CheckCircle, Send, BarChart3 } from 'lucide-react';
-
+import {
+  Card,
+  CardBody,
+  Button,
+  Input,
+  Textarea,
+  Chip,
+  Avatar,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Tabs,
+  Tab,
+  Spinner,
+} from '@heroui/react';
+import {
+  User,
+  LogOut,
+  Search,
+  Plus,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  BarChart3,
+  Ticket,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
 import { Serverurl } from '../App.jsx';
+import { toast } from 'react-hot-toast';
+import CustomModal from '../components/CustomModal.jsx';
 
 export default function Dashboard() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [showSidebar, setShowSidebar] = useState(true);
   const [activeTab, setActiveTab] = useState('tickets');
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -14,10 +42,8 @@ export default function Dashboard() {
   const [newTicket, setNewTicket] = useState({ title: '', description: '' });
   const [moderators, setModerators] = useState([]);
 
-  // Get token from localStorage
   const getToken = () => localStorage.getItem('authToken');
 
-  // Fetch current user
   useEffect(() => {
     const token = getToken();
     if (token) {
@@ -30,7 +56,6 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Fetch Tickets
   useEffect(() => {
     if (activeTab === 'tickets') {
       fetchTickets();
@@ -52,7 +77,6 @@ export default function Dashboard() {
       if (!res.ok) throw new Error('Failed to fetch tickets');
       const data = await res.json();
 
-      // Map backend data to frontend format
       const mapped = (Array.isArray(data) ? data : data.tickets || []).map(ticket => ({
         id: ticket._id,
         title: ticket.title,
@@ -68,12 +92,12 @@ export default function Dashboard() {
       setTickets(mapped);
     } catch (err) {
       console.error('Error fetching tickets:', err);
+      toast.error('Failed to fetch tickets');
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch Moderators/Users
   useEffect(() => {
     if (activeTab === 'moderators' && currentUser?.role === 'admin') {
       fetchModerators();
@@ -97,15 +121,15 @@ export default function Dashboard() {
       setModerators(data.users || []);
     } catch (err) {
       console.error('Error fetching moderators:', err);
+      toast.error('Failed to fetch moderators');
     } finally {
       setLoading(false);
     }
   };
 
-  // Create Ticket
   const handleCreateTicket = async () => {
     if (!newTicket.title || !newTicket.description) {
-      alert('Please fill in all fields');
+      toast.error('Please fill in all fields');
       return;
     }
 
@@ -122,13 +146,14 @@ export default function Dashboard() {
       });
 
       if (!res.ok) throw new Error('Failed to create ticket');
-      const ticket = await res.json();
+      const data = await res.json();
+      const ticket = data.ticket;
 
       const mappedTicket = {
         id: ticket._id,
         title: ticket.title,
         description: ticket.description,
-        status: ticket.status.toLowerCase().replace('_', '-'),
+        status: ticket.status?.toLowerCase().replace('_', '-') || 'todo',
         priority: ticket.priority?.toLowerCase() || 'medium',
         category: ticket.relatedSkills?.[0] || 'General',
         assignee: ticket.assignedTo?.email || 'Unassigned',
@@ -139,10 +164,10 @@ export default function Dashboard() {
       setTickets([mappedTicket, ...tickets]);
       setNewTicket({ title: '', description: '' });
       setShowCreateModal(false);
-      alert('Ticket created successfully!');
+      toast.success('Ticket created successfully!');
     } catch (err) {
       console.error('Error creating ticket:', err);
-      alert('Failed to create ticket');
+      toast.error('Failed to create ticket');
     } finally {
       setLoading(false);
     }
@@ -155,18 +180,27 @@ export default function Dashboard() {
 
   const getPriorityColor = (priority) => {
     const colors = {
-      critical: 'bg-red-100 text-red-800',
-      high: 'bg-orange-100 text-orange-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      low: 'bg-green-100 text-green-800',
+      critical: 'danger',
+      high: 'warning',
+      medium: 'primary',
+      low: 'success',
     };
-    return colors[priority] || 'bg-gray-100 text-gray-800';
+    return colors[priority] || 'default';
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      'closed': 'success',
+      'in-progress': 'primary',
+      'todo': 'warning',
+    };
+    return colors[status] || 'default';
   };
 
   const getStatusIcon = (status) => {
-    if (status === 'closed') return <CheckCircle className="w-5 h-5 text-green-500" />;
-    if (status === 'in-progress') return <Clock className="w-5 h-5 text-blue-500" />;
-    return <AlertCircle className="w-5 h-5 text-orange-500" />;
+    if (status === 'closed') return <CheckCircle className="w-5 h-5" />;
+    if (status === 'in-progress') return <Clock className="w-5 h-5" />;
+    return <AlertCircle className="w-5 h-5" />;
   };
 
   const filteredTickets = tickets.filter(t =>
@@ -174,142 +208,239 @@ export default function Dashboard() {
     t.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const stats = [
+    {
+      label: 'Total Tickets',
+      value: tickets.length,
+      icon: <Ticket className="w-6 h-6" />,
+      color: 'bg-indigo-100 text-indigo-600'
+    },
+    {
+      label: 'Resolved',
+      value: tickets.filter(t => t.status === 'closed').length,
+      icon: <CheckCircle className="w-6 h-6" />,
+      color: 'bg-green-100 text-green-600'
+    },
+    {
+      label: 'In Progress',
+      value: tickets.filter(t => t.status === 'in-progress').length,
+      icon: <Clock className="w-6 h-6" />,
+      color: 'bg-yellow-100 text-yellow-600'
+    },
+    {
+      label: 'Pending',
+      value: tickets.filter(t => t.status === 'todo').length,
+      icon: <AlertCircle className="w-6 h-6" />,
+      color: 'bg-purple-100 text-purple-600'
+    },
+  ];
+
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Sidebar */}
-      <div className={`${showSidebar ? 'w-64' : 'w-20'} bg-slate-800 border-r border-slate-700 transition-all duration-300 flex flex-col h-screen`}>
-        <div className="p-6 flex items-center justify-between border-b border-slate-700">
-          {showSidebar && <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">TicketAI</h1>}
-          <button onClick={() => setShowSidebar(!showSidebar)} className="text-slate-400 hover:text-white">
-            {showSidebar ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-2">
-          {[
-            { icon: <AlertCircle className="w-5 h-5" />, label: 'Tickets', tab: 'tickets' },
-            { icon: <User className="w-5 h-5" />, label: 'Moderators', tab: 'moderators' },
-            { icon: <BarChart3 className="w-5 h-5" />, label: 'Analytics', tab: 'analytics' },
-          ].map((item) => (
-            <button
-              key={item.tab}
-              onClick={() => setActiveTab(item.tab)}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${activeTab === item.tab
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                }`}
-            >
-              {item.icon}
-              {showSidebar && <span>{item.label}</span>}
-            </button>
-          ))}
-        </nav>
-
-        <div className="p-4 border-t border-slate-700">
-          <div className="flex items-center space-x-3 px-4 py-3 rounded-lg bg-slate-700 cursor-pointer hover:bg-slate-600 transition">
-            <User className="w-5 h-5 text-cyan-400" />
-            {showSidebar && (
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-white">{currentUser?.email?.split('@')[0] || 'User'}</p>
-                <p className="text-xs text-slate-400">{currentUser?.role || 'user'}</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <Ticket className="w-6 h-6 text-indigo-600" />
               </div>
-            )}
-            <button onClick={handleLogout} className="text-slate-400 hover:text-white">
-              <LogOut className="w-4 h-4" />
-            </button>
+              <h1 className="text-2xl font-bold text-gray-900">
+                TicketAI Dashboard
+              </h1>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Dropdown placement="bottom-end">
+                <DropdownTrigger>
+                  <Avatar
+                    as="button"
+                    className="transition-transform"
+                    color="secondary"
+                    name={currentUser?.email}
+                    size="sm"
+                    showFallback
+                  />
+                </DropdownTrigger>
+                <DropdownMenu aria-label="Profile Actions" variant="flat">
+                  <DropdownItem key="profile" className="h-14 gap-2">
+                    <p className="font-semibold">Signed in as</p>
+                    <p className="font-semibold">{currentUser?.email}</p>
+                  </DropdownItem>
+                  <DropdownItem key="role">
+                    Role: {currentUser?.role || 'user'}
+                  </DropdownItem>
+                  <DropdownItem key="logout" color="danger" onClick={handleLogout}>
+                    Log Out
+                  </DropdownItem>
+                </DropdownMenu>
+              </Dropdown>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto flex flex-col">
-        {/* Header */}
-        <div className="bg-slate-800 border-b border-slate-700 p-6 sticky top-0 z-10">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-3xl font-bold text-white mb-2">
-                {activeTab === 'tickets' && '🎫 Ticket Management'}
-                {activeTab === 'moderators' && '👥 Moderators'}
-                {activeTab === 'analytics' && '📊 Analytics'}
-              </h2>
-              <p className="text-slate-400">Manage and track support tickets with AI assistance</p>
-            </div>
-            {activeTab === 'tickets' && (
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center space-x-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-all shadow-lg"
-              >
-                <Plus className="w-5 h-5" />
-                <span>New Ticket</span>
-              </button>
-            )}
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Tabs */}
+        <Tabs
+          aria-label="Dashboard tabs"
+          selectedKey={activeTab}
+          onSelectionChange={setActiveTab}
+          color="primary"
+          variant="underlined"
+          classNames={{
+            tabList: "gap-6 w-full relative rounded-none p-0 border-b border-gray-200",
+            cursor: "w-full bg-indigo-600",
+            tab: "max-w-fit px-0 h-12",
+            tabContent: "group-data-[selected=true]:text-indigo-600"
+          }}
+        >
+          <Tab
+            key="tickets"
+            title={
+              <div className="flex items-center space-x-2">
+                <Ticket className="w-5 h-5" />
+                <span>Tickets</span>
+              </div>
+            }
+          />
+          <Tab
+            key="moderators"
+            title={
+              <div className="flex items-center space-x-2">
+                <Users className="w-5 h-5" />
+                <span>Team</span>
+              </div>
+            }
+          />
+          <Tab
+            key="analytics"
+            title={
+              <div className="flex items-center space-x-2">
+                <BarChart3 className="w-5 h-5" />
+                <span>Analytics</span>
+              </div>
+            }
+          />
+        </Tabs>
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto">
+        {/* Tab Content */}
+        <div className="mt-8">
           {/* Tickets Tab */}
           {activeTab === 'tickets' && (
-            <div className="p-6">
-              <div className="flex gap-4 mb-6">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-4 top-3 w-5 h-5 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search tickets..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
-                  />
-                </div>
-                <button className="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-3 rounded-lg border border-slate-700 transition">
-                  <Filter className="w-5 h-5" />
-                  <span>Filter</span>
-                </button>
+            <div className="space-y-6">
+              {/* Search and Create */}
+              <div className="flex gap-4">
+                <Input
+                  type="text"
+                  placeholder="Search tickets..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  startContent={<Search className="w-5 h-5 text-gray-400" />}
+                  variant="underlined"
+                  classNames={{
+                    inputWrapper: "border-gray-100",
+                    input: "pl-2"
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  color="primary"
+                  startContent={<Plus className="w-5 h-5" />}
+                  onClick={() => setShowCreateModal(true)}
+                  className="bg-indigo-600 text-white"
+                >
+                  New Ticket
+                </Button>
               </div>
 
+              {/* Tickets List */}
               {loading ? (
-                <div className="text-center text-slate-400 py-10">Loading tickets...</div>
+                <div className="flex justify-center py-20">
+                  <Spinner size="lg" color="primary" />
+                </div>
               ) : filteredTickets.length === 0 ? (
-                <div className="text-center text-slate-400 py-10">No tickets found</div>
+                <Card className="border border-gray-200 shadow-sm">
+                  <CardBody className="text-center py-20">
+                    <Ticket className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                    <p className="text-gray-600 text-lg">No tickets found</p>
+                  </CardBody>
+                </Card>
               ) : (
-                <div className="grid gap-4">
+                <div className="grid gap-3">
                   {filteredTickets.map((ticket) => (
-                    <div key={ticket.id} className="bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-cyan-500 transition-all hover:shadow-lg hover:shadow-cyan-500/10 cursor-pointer group">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-start space-x-4 flex-1">
-                          {getStatusIcon(ticket.status)}
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-white group-hover:text-cyan-400 transition">{ticket.title}</h3>
-                            <p className="text-sm text-slate-400 mt-1">ID: #{ticket.id.slice(0, 8)}</p>
+                    <Card
+                      key={ticket.id}
+                      className="border border-gray-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all"
+                      isPressable
+                    >
+                      <CardBody className="p-5">
+                        <div className="flex items-start gap-6">
+                          {/* Left: Avatar & Assigned To */}
+                          <div className="flex items-start gap-3 min-w-[180px]">
+                            <div className="w-9 h-9 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <User className="w-4 h-4 text-indigo-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-xs text-gray-500 mb-0.5">Assigned to</p>
+                              <p className="text-sm font-semibold text-gray-900">{ticket.assignee}</p>
+                            </div>
+                          </div>
+
+
+                          {/* Center: Priority, Title, ID & Description */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start gap-3 mb-2">
+                              <Chip
+                                color={getPriorityColor(ticket.priority)}
+                                variant="flat"
+                                size="sm"
+                                className="uppercase font-semibold flex-shrink-0"
+                              >
+                                {ticket.priority}
+                              </Chip>
+                              <div className="text-indigo-600 mt-0.5 flex-shrink-0">
+                                {getStatusIcon(ticket.status)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3
+                                  className="text-base font-bold text-gray-900 mb-0.5 truncate cursor-help"
+                                  title={ticket.title}
+                                >
+                                  {ticket.title}
+                                </h3>
+                                <p className="text-xs text-gray-500">
+                                  ID: #{ticket.id.slice(0, 8)}
+                                </p>
+                              </div>
+                            </div>
+                            <p
+                              className="text-sm text-gray-600 line-clamp-2 ml-0 cursor-help"
+                              title={ticket.description}
+                            >
+                              {ticket.description}
+                            </p>
+                          </div>
+
+                          {/* Right: Category, Status, Date */}
+                          <div className="flex items-start gap-8 min-w-[400px]">
+                            <div className="min-w-[120px]">
+                              <p className="text-xs text-gray-500 mb-1.5">Category</p>
+                              <p className="text-sm font-medium text-gray-900">{ticket.category}</p>
+                            </div>
+                            <div className="min-w-[100px]">
+                              <p className="text-xs text-gray-500 mb-1.5">Status</p>
+                              <p className="text-sm font-medium text-gray-900">{ticket.status}</p>
+                            </div>
+                            <div className="min-w-[90px]">
+                              <p className="text-xs text-gray-500 mb-1.5">Date</p>
+                              <p className="text-sm font-medium text-gray-900">{ticket.date}</p>
+                            </div>
                           </div>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPriorityColor(ticket.priority)}`}>
-                          {ticket.priority.toUpperCase()}
-                        </span>
-                      </div>
-
-                      <p className="text-sm text-slate-300 mb-4">{ticket.description}</p>
-
-                      <div className="grid grid-cols-4 gap-4 pt-4 border-t border-slate-700">
-                        <div>
-                          <p className="text-xs text-slate-400 mb-1">Category</p>
-                          <p className="text-sm font-medium text-white">{ticket.category}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-400 mb-1">Assigned To</p>
-                          <p className="text-sm font-medium text-white">{ticket.assignee}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-400 mb-1">Status</p>
-                          <span className="inline-block px-2 py-1 bg-slate-700 text-white text-xs rounded capitalize">{ticket.status}</span>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-400 mb-1">Date</p>
-                          <p className="text-sm font-medium text-white">{ticket.date}</p>
-                        </div>
-                      </div>
-                    </div>
+                      </CardBody>
+                    </Card>
                   ))}
                 </div>
               )}
@@ -318,108 +449,168 @@ export default function Dashboard() {
 
           {/* Moderators Tab */}
           {activeTab === 'moderators' && (
-            <div className="p-6">
+            <div>
               {currentUser?.role === 'admin' ? (
-                <div className="grid grid-cols-3 gap-6">
-                  {moderators.map((mod) => (
-                    <div key={mod._id} className="bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-cyan-500 transition-all">
-                      <h3 className="text-lg font-bold text-white mb-2">{mod.email}</h3>
-                      <p className="text-slate-400 text-sm mb-4">Role: {mod.role}</p>
-                      {mod.skills && mod.skills.length > 0 && (
-                        <div className="flex gap-2 flex-wrap">
-                          {mod.skills.map(skill => (
-                            <span key={skill} className="px-3 py-1 bg-cyan-500/20 text-cyan-300 text-xs rounded-full">
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                loading ? (
+                  <div className="flex justify-center py-20">
+                    <Spinner size="lg" color="primary" />
+                  </div>
+                ) : (
+                  <div className="grid gap-3">
+                    {moderators.map((mod) => (
+                      <Card
+                        key={mod._id}
+                        className="border border-gray-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all"
+                      >
+                        <CardBody className="p-5">
+                          <div className="flex items-center gap-6">
+                            {/* Left: Avatar */}
+                            <div className="flex-shrink-0">
+                              <div className="relative">
+                                <div className="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center">
+                                  <span className="text-lg font-bold text-indigo-600">
+                                    {mod.email.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                              </div>
+                            </div>
+
+                            {/* Center: Name & Role */}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-base font-bold text-gray-900 mb-1">
+                                {mod.email.split('@')[0]}
+                              </h3>
+                              <p className="text-sm text-gray-600">{mod.role}</p>
+                            </div>
+
+                            {/* Right: Email & Skills */}
+                            <div className="flex items-center gap-8 min-w-[500px]">
+                              <div className="min-w-[200px]">
+                                <p className="text-xs text-gray-500 mb-1">Email</p>
+                                <p className="text-sm font-medium text-gray-900 truncate" title={mod.email}>
+                                  {mod.email}
+                                </p>
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-xs text-gray-500 mb-1.5">Skills</p>
+                                {mod.skills && mod.skills.length > 0 ? (
+                                  <div className="flex flex-wrap gap-2">
+                                    {mod.skills.slice(0, 3).map((skill, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-medium"
+                                      >
+                                        {skill}
+                                      </span>
+                                    ))}
+                                    {mod.skills.length > 3 && (
+                                      <span className="px-2.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-medium">
+                                        +{mod.skills.length - 3}
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-gray-400">No skills</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </CardBody>
+                      </Card>
+                    ))}
+                  </div>
+                )
               ) : (
-                <div className="text-center text-slate-400 py-10">Only admins can view moderators</div>
+                <Card className="border border-gray-200 shadow-sm">
+                  <CardBody className="text-center py-20">
+                    <Users className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                    <p className="text-gray-600 text-lg">
+                      Only admins can view team members
+                    </p>
+                  </CardBody>
+                </Card>
               )}
             </div>
           )}
 
           {/* Analytics Tab */}
           {activeTab === 'analytics' && (
-            <div className="p-6 grid grid-cols-2 gap-6">
-              {[
-                { label: 'Total Tickets', value: tickets.length, icon: '📋', color: 'from-cyan-500 to-blue-500' },
-                { label: 'Resolved', value: tickets.filter(t => t.status === 'closed').length, icon: '✅', color: 'from-green-500 to-emerald-500' },
-                { label: 'In Progress', value: tickets.filter(t => t.status === 'in-progress').length, icon: '⏳', color: 'from-yellow-500 to-orange-500' },
-                { label: 'Avg Response Time', value: '2.5h', icon: '⚡', color: 'from-purple-500 to-pink-500' },
-              ].map((stat, i) => (
-                <div key={i} className={`bg-gradient-to-br ${stat.color} p-6 rounded-lg text-white shadow-lg`}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-slate-200 text-sm mb-1">{stat.label}</p>
-                      <p className="text-4xl font-bold">{stat.value}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {stats.map((stat, i) => (
+                <Card
+                  key={i}
+                  className="border border-gray-200 shadow-sm"
+                >
+                  <CardBody className="p-6">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-gray-600 text-sm mb-1">{stat.label}</p>
+                        <p className="text-4xl font-bold text-gray-900">{stat.value}</p>
+                      </div>
+                      <div className={`p-3 rounded-lg ${stat.color}`}>{stat.icon}</div>
                     </div>
-                    <span className="text-3xl">{stat.icon}</span>
-                  </div>
-                </div>
+                  </CardBody>
+                </Card>
               ))}
             </div>
           )}
         </div>
       </div>
 
+
       {/* Create Ticket Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-lg shadow-2xl max-w-md w-full border border-slate-700">
-            <div className="flex justify-between items-center p-6 border-b border-slate-700">
-              <h3 className="text-xl font-bold text-white">Create New Ticket</h3>
-              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+      <CustomModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create New Ticket"
+        subtitle="Describe your issue and we'll help you resolve it"
+        size="md"
+      >
+        <div className="space-y-5">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Ticket Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="e.g., Unable to login to my account"
+              value={newTicket.title}
+              onChange={(e) => setNewTicket({ ...newTicket, title: e.target.value })}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+            />
+          </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-white mb-2">Title</label>
-                <input
-                  type="text"
-                  placeholder="Enter ticket title"
-                  value={newTicket.title}
-                  onChange={(e) => setNewTicket({ ...newTicket, title: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-white mb-2">Description</label>
-                <textarea
-                  placeholder="Describe your issue..."
-                  value={newTicket.description}
-                  onChange={(e) => setNewTicket({ ...newTicket, description: e.target.value })}
-                  rows="4"
-                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 resize-none"
-                />
-              </div>
-            </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Issue Description <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              placeholder="Please provide detailed information about your issue..."
+              value={newTicket.description}
+              onChange={(e) => setNewTicket({ ...newTicket, description: e.target.value })}
+              rows={4}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400 resize-none"
+            />
+          </div>
 
-            <div className="flex gap-3 p-6 border-t border-slate-700">
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateTicket}
-                disabled={loading}
-                className="flex-1 flex items-center justify-center space-x-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
-              >
-                <Send className="w-4 h-4" />
-                <span>{loading ? 'Creating...' : 'Create'}</span>
-              </button>
-            </div>
+          <div className="flex gap-3 pt-4 border-t border-gray-200">
+            <button
+              onClick={() => setShowCreateModal(false)}
+              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreateTicket}
+              disabled={loading}
+              className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Creating...' : 'Create Ticket'}
+            </button>
           </div>
         </div>
-      )}
+      </CustomModal>
     </div>
   );
 }
