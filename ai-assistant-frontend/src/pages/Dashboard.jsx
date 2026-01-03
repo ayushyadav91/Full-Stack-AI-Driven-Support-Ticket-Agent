@@ -15,6 +15,8 @@ import {
   X,
   UserCircle,
   Info,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Serverurl } from '../App.jsx';
@@ -44,6 +46,9 @@ export default function Dashboard() {
   const [selectedTicketNotes, setSelectedTicketNotes] = useState(null);
   const [profilePicture, setProfilePicture] = useState(null);
   const [profilePicturePreview, setProfilePicturePreview] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [ticketsPerPage, setTicketsPerPage] = useState(10);
+  const [paginationInfo, setPaginationInfo] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -90,10 +95,10 @@ export default function Dashboard() {
     }
   };
 
-  const fetchTickets = async (token) => {
+  const fetchTickets = async (token, page = currentPage, limit = ticketsPerPage) => {
     setLoading(true);
     try {
-      const response = await fetch(`${Serverurl}/api/ticket/get`, {
+      const response = await fetch(`${Serverurl}/api/ticket/get?page=${page}&limit=${limit}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
@@ -110,6 +115,7 @@ export default function Dashboard() {
           helpfulNotes: ticket.helpfulNotes || null,
         }));
         setTickets(mappedTickets);
+        setPaginationInfo(data.pagination);
       }
     } catch (error) {
       console.error('Error fetching tickets:', error);
@@ -142,8 +148,15 @@ export default function Dashboard() {
         setShowCreateModal(false);
         toast.success('Ticket created successfully!');
 
-        // Refetch all tickets to get the latest data including assignee
+        // Refetch immediately to show the new ticket
         await fetchTickets(token);
+
+        // Refetch again after 3 seconds to get the assigned moderator
+        // (assignment happens asynchronously via Inngest)
+        setTimeout(async () => {
+          await fetchTickets(token);
+          toast.success('Ticket assigned to moderator!');
+        }, 10000);
       } else {
         const error = await response.json();
         toast.error(error.message || 'Failed to create ticket');
@@ -306,8 +319,8 @@ export default function Dashboard() {
           {/* Tickets Tab */}
           <TabsContent value="tickets">
             <div className="space-y-6">
-              {/* Search and Create */}
-              <div className="flex gap-4">
+              {/* Search, Create, and Page Size */}
+              <div className="flex gap-4 items-center">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
                   <Input
@@ -318,6 +331,27 @@ export default function Dashboard() {
                     className="pl-10 bg-white/90 backdrop-blur-sm"
                   />
                 </div>
+                {paginationInfo && (
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-neutral-600">Per page:</label>
+                    <select
+                      value={ticketsPerPage}
+                      onChange={(e) => {
+                        const newLimit = parseInt(e.target.value);
+                        setTicketsPerPage(newLimit);
+                        setCurrentPage(1);
+                        const token = localStorage.getItem('authToken');
+                        fetchTickets(token, 1, newLimit);
+                      }}
+                      className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="5">5</option>
+                      <option value="10">10</option>
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                    </select>
+                  </div>
+                )}
                 <Button onClick={() => setShowCreateModal(true)}>
                   <Plus className="mr-2 h-5 w-5" />
                   New Ticket
@@ -397,6 +431,45 @@ export default function Dashboard() {
                   }))}
                   className="gap-4"
                 />
+              )}
+
+              {/* Page Navigation at Bottom */}
+              {paginationInfo && !loading && filteredTickets.length > 0 && (
+                <div className="flex items-center justify-center gap-3 pt-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newPage = currentPage - 1;
+                      setCurrentPage(newPage);
+                      const token = localStorage.getItem('authToken');
+                      fetchTickets(token, newPage, ticketsPerPage);
+                    }}
+                    disabled={!paginationInfo.hasPrevPage}
+                    className="bg-white hover:bg-gray-50 text-neutral-700 border-neutral-300"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                  </Button>
+                  <span className="text-sm font-medium text-white bg-neutral-800 px-4 py-2 rounded-lg">
+                    Page {paginationInfo.currentPage} of {paginationInfo.totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newPage = currentPage + 1;
+                      setCurrentPage(newPage);
+                      const token = localStorage.getItem('authToken');
+                      fetchTickets(token, newPage, ticketsPerPage);
+                    }}
+                    disabled={!paginationInfo.hasNextPage}
+                    className="bg-white hover:bg-gray-50 text-neutral-700 border-neutral-300"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
               )}
             </div>
           </TabsContent>

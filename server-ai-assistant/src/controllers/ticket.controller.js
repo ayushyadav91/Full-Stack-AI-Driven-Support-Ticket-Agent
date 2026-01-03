@@ -39,19 +39,46 @@ export const createTicket = async (req, res) => {
 export const getTickets = async (req, res) => {
   try {
     const user = req.user;
+
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     let tickets;
+    let totalCount;
 
     if (user.role !== "user") {
+      // Get total count for pagination
+      totalCount = await Ticket.countDocuments({});
+
       tickets = await Ticket.find({})
         .populate("assignedTo", ["email", "_id"])
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
     } else {
+      // Get total count for pagination
+      totalCount = await Ticket.countDocuments({ createdBy: user._id });
+
       tickets = await Ticket.find({ createdBy: user._id })
         .select("title description status createdAt helpfulNotes priority relatedSkills")
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
     }
 
-    return res.status(200).json({ tickets });
+    return res.status(200).json({
+      tickets,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
+        totalTickets: totalCount,
+        ticketsPerPage: limit,
+        hasNextPage: page < Math.ceil(totalCount / limit),
+        hasPrevPage: page > 1
+      }
+    });
   } catch (error) {
     console.error("Error fetching tickets", error.message);
     return res.status(500).json({ message: "Internal Server Error" });
