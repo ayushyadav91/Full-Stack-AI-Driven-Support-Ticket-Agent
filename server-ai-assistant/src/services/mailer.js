@@ -1,7 +1,12 @@
 import nodemailer from "nodemailer";
 
-export const sendEmail = async (to, subject, text) => {
+export const sendEmail = async (options) => {
     try {
+        // Support both object and individual parameters for backward compatibility
+        const { to, subject, text, html } = typeof options === 'string'
+            ? { to: options, subject: arguments[1], text: arguments[2], html: null }
+            : options;
+
         const transporter = nodemailer.createTransport({
             host: process.env.MAILTRAP_SMTP_HOST,
             port: process.env.MAILTRAP_SMTP_PORT,
@@ -11,12 +16,20 @@ export const sendEmail = async (to, subject, text) => {
                 pass: process.env.MAILTRAP_SMTP_PASSWORD,
             },
         });
-        const info = await transporter.sendMail({
-            from: "Ayush Agent is Hear",
+
+        const mailOptions = {
+            from: process.env.EMAIL_FROM || "TicketAI <noreply@ticketai.com>",
             to,
             subject,
             text,
-        });
+        };
+
+        // Add HTML if provided
+        if (html) {
+            mailOptions.html = html;
+        }
+
+        const info = await transporter.sendMail(mailOptions);
         console.log("Message sent: %s", info.messageId);
         return info;
     } catch (error) {

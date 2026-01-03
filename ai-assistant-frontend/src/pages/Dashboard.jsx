@@ -178,12 +178,13 @@ export default function Dashboard() {
     window.location.href = '/';
   };
 
+
   const getPriorityColor = (priority) => {
     const colors = {
-      critical: 'danger',
-      high: 'warning',
-      medium: 'primary',
-      low: 'success',
+      critical: 'danger',    // Red
+      high: 'danger',        // Red
+      medium: 'warning',     // Orange/Yellow
+      low: 'success',        // Green
     };
     return colors[priority] || 'default';
   };
@@ -236,16 +237,16 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 border-b border-indigo-700 sticky top-0 z-40 shadow-md">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <Ticket className="w-6 h-6 text-indigo-600" />
+              <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
+                <Ticket className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-white">
                 TicketAI Dashboard
               </h1>
             </div>
@@ -349,7 +350,7 @@ export default function Dashboard() {
                   color="primary"
                   startContent={<Plus className="w-5 h-5" />}
                   onClick={() => setShowCreateModal(true)}
-                  className="bg-indigo-600 text-white"
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg hover:shadow-xl transition-shadow"
                 >
                   New Ticket
                 </Button>
@@ -540,15 +541,15 @@ export default function Dashboard() {
               {stats.map((stat, i) => (
                 <Card
                   key={i}
-                  className="border border-gray-200 shadow-sm"
+                  className="border-2 border-transparent bg-gradient-to-br from-white to-gray-50 shadow-md hover:shadow-xl hover:border-indigo-200 transition-all"
                 >
                   <CardBody className="p-6">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-gray-600 text-sm mb-1">{stat.label}</p>
-                        <p className="text-4xl font-bold text-gray-900">{stat.value}</p>
+                        <p className="text-gray-600 text-sm mb-1 font-medium">{stat.label}</p>
+                        <p className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{stat.value}</p>
                       </div>
-                      <div className={`p-3 rounded-lg ${stat.color}`}>{stat.icon}</div>
+                      <div className={`p-3 rounded-xl ${stat.color} shadow-sm`}>{stat.icon}</div>
                     </div>
                   </CardBody>
                 </Card>
@@ -604,7 +605,7 @@ export default function Dashboard() {
             <button
               onClick={handleCreateTicket}
               disabled={loading}
-              className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Creating...' : 'Create Ticket'}
             </button>
