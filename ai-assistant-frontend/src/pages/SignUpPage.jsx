@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, Tag, X } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, X } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Serverurl } from '../App.jsx';
 import { toast } from 'react-hot-toast';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
 
-// API Call Functions
 const apiCall = {
   post: async (endpoint, data) => {
     try {
@@ -26,7 +29,7 @@ const apiCall = {
     }
   },
 
-  signup: async (email, password, skills = []) => {
+  signup: async (email, password, skills) => {
     return apiCall.post('/api/auth/signup', { email, password, skills });
   },
 };
@@ -34,33 +37,42 @@ const apiCall = {
 export default function SignUpPage({ onSignUpSuccess, onSwitchToLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [signupForm, setSignupForm] = useState({ email: '', password: '', skills: [] });
+  const [signupForm, setSignupForm] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    skills: [],
+  });
   const [skillInput, setSkillInput] = useState('');
 
-  // Email validation
   const validateEmail = (email) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
   };
 
   const handleAddSkill = (e) => {
-    if (e.key === 'Enter' && skillInput.trim() && !signupForm.skills.includes(skillInput.trim())) {
-      setSignupForm({ ...signupForm, skills: [...signupForm.skills, skillInput.trim()] });
-      setSkillInput('');
+    if (e.key === 'Enter' && skillInput.trim()) {
       e.preventDefault();
+      if (!signupForm.skills.includes(skillInput.trim())) {
+        setSignupForm({
+          ...signupForm,
+          skills: [...signupForm.skills, skillInput.trim()],
+        });
+        setSkillInput('');
+      } else {
+        toast.error('Skill already added');
+      }
     }
   };
 
   const handleRemoveSkill = (skillToRemove) => {
     setSignupForm({
       ...signupForm,
-      skills: signupForm.skills.filter(skill => skill !== skillToRemove)
+      skills: signupForm.skills.filter((skill) => skill !== skillToRemove),
     });
   };
 
-  // Signup Handler
   const handleSignUp = async () => {
-    // Frontend Validation
     if (!signupForm.email) {
       toast.error('Email is required');
       return;
@@ -77,19 +89,27 @@ export default function SignUpPage({ onSignUpSuccess, onSwitchToLogin }) {
       toast.error('Password must be at least 6 characters');
       return;
     }
+    if (signupForm.password !== signupForm.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
 
     setLoading(true);
     try {
-      // API Call to Backend
-      const response = await apiCall.signup(signupForm.email, signupForm.password, signupForm.skills);
+      const response = await apiCall.signup(
+        signupForm.email,
+        signupForm.password,
+        signupForm.skills
+      );
 
-      // Store token in localStorage
       localStorage.setItem('authToken', response.token);
+      setSignupForm({
+        email: '',
+        password: '',
+        confirmPassword: '',
+        skills: [],
+      });
 
-      // Clear form
-      setSignupForm({ email: '', password: '', skills: [] });
-
-      // Call parent callback
       setTimeout(() => {
         onSignUpSuccess(response.user, response.token);
       }, 500);
@@ -101,102 +121,112 @@ export default function SignUpPage({ onSignUpSuccess, onSwitchToLogin }) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-3xl font-bold text-neutral-900 dark:text-neutral-50">Create Account</h2>
+        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
           Already have an account?{' '}
-          <button onClick={onSwitchToLogin} className="text-indigo-600 font-semibold hover:underline">
-            Log in
+          <button
+            onClick={onSwitchToLogin}
+            className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+          >
+            Sign in
           </button>
         </p>
       </div>
 
-      {/* Form */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="mb-2 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
             Email
           </label>
           <div className="relative">
-            <Mail size={18} className="absolute left-3 top-3 text-gray-400" />
-            <input
+            <Mail className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
+            <Input
               type="email"
               placeholder="Enter your email"
               value={signupForm.email}
               onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+              className="pl-10"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="mb-2 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
             Password
           </label>
           <div className="relative">
-            <Lock size={18} className="absolute left-3 top-3 text-gray-400" />
-            <input
+            <Lock className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
+            <Input
               type={showPassword ? 'text' : 'password'}
-              placeholder="Enter your password (min 6 characters)"
+              placeholder="Enter your password"
               value={signupForm.password}
               onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
-              className="w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+              className="pl-10 pr-10"
             />
             <button
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+              className="absolute right-3 top-3 text-neutral-400 hover:text-neutral-600"
               type="button"
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
-            Skills (Optional)
+          <label className="mb-2 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+            Confirm Password
           </label>
           <div className="relative">
-            <Tag size={18} className="absolute left-3 top-3 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Add your skills (press Enter)"
-              value={skillInput}
-              onChange={(e) => setSkillInput(e.target.value)}
-              onKeyPress={handleAddSkill}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+            <Lock className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
+            <Input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="Confirm your password"
+              value={signupForm.confirmPassword}
+              onChange={(e) => setSignupForm({ ...signupForm, confirmPassword: e.target.value })}
+              className="pl-10"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
+            Skills (Optional)
+          </label>
+          <Input
+            type="text"
+            placeholder="Type a skill and press Enter"
+            value={skillInput}
+            onChange={(e) => setSkillInput(e.target.value)}
+            onKeyDown={handleAddSkill}
+          />
           {signupForm.skills.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
+            <div className="mt-3 flex flex-wrap gap-2">
               {signupForm.skills.map((skill, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium"
-                >
+                <Badge key={index} variant="default" className="flex items-center gap-1">
                   {skill}
                   <button
                     onClick={() => handleRemoveSkill(skill)}
-                    className="hover:text-indigo-900"
+                    className="ml-1 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-800"
                   >
-                    <X size={14} />
+                    <X className="h-3 w-3" />
                   </button>
-                </span>
+                </Badge>
               ))}
             </div>
           )}
         </div>
 
-        <button
-          onClick={handleSignUp}
-          disabled={loading}
-          className="w-full py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <Button onClick={handleSignUp} disabled={loading} className="w-full">
           {loading ? 'Creating Account...' : 'Sign Up'}
-        </button>
+        </Button>
       </div>
-    </div>
+    </motion.div>
   );
 }

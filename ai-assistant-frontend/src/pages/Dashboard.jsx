@@ -1,127 +1,90 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
-  Card,
-  CardBody,
-  Button,
-  Input,
-  Textarea,
-  Chip,
-  Avatar,
-  Dropdown,
-  DropdownTrigger,
-  DropdownMenu,
-  DropdownItem,
-  Tabs,
-  Tab,
-  Spinner,
-} from '@heroui/react';
-import {
-  User,
-  LogOut,
+  Ticket,
+  Users,
+  BarChart3,
   Search,
   Plus,
+  User,
   Clock,
-  CheckCircle,
   AlertCircle,
-  BarChart3,
-  Ticket,
-  TrendingUp,
-  Users,
+  CheckCircle,
+  LogOut,
+  X,
 } from 'lucide-react';
-import { Serverurl } from '../App.jsx';
 import { toast } from 'react-hot-toast';
-import CustomModal from '../components/CustomModal.jsx';
+import { Serverurl } from '../App.jsx';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
+import { Spinner } from '../components/ui/spinner';
+import { Modal, ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../components/ui/modal';
+import { HoverEffect } from '../components/ui/card-hover-effect';
 
 export default function Dashboard() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('tickets');
   const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [moderators, setModerators] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('tickets');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTicket, setNewTicket] = useState({ title: '', description: '' });
-  const [moderators, setModerators] = useState([]);
-
-  const getToken = () => localStorage.getItem('authToken');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const token = getToken();
-    if (token) {
-      try {
-        const decoded = JSON.parse(atob(token.split('.')[1]));
-        setCurrentUser({ email: decoded.email, role: decoded.role });
-      } catch (err) {
-        console.error('Error decoding token:', err);
-      }
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      navigate('/');
+      return;
     }
-  }, []);
+    fetchUserData(token);
+    fetchTickets(token);
+  }, [navigate]);
 
-  useEffect(() => {
-    if (activeTab === 'tickets') {
-      fetchTickets();
-    }
-  }, [activeTab]);
-
-  const fetchTickets = async () => {
-    setLoading(true);
+  const fetchUserData = async (token) => {
     try {
-      const token = getToken();
-      const res = await fetch(`${Serverurl}/api/ticket/get`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+      const response = await fetch(`${Serverurl}/api/auth/users`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!res.ok) throw new Error('Failed to fetch tickets');
-      const data = await res.json();
-
-      const mapped = (Array.isArray(data) ? data : data.tickets || []).map(ticket => ({
-        id: ticket._id,
-        title: ticket.title,
-        description: ticket.description,
-        status: ticket.status.toLowerCase().replace('_', '-'),
-        priority: ticket.priority?.toLowerCase() || 'medium',
-        category: ticket.relatedSkills?.[0] || 'General',
-        assignee: ticket.assignedTo?.email || 'Unassigned',
-        date: new Date(ticket.createdAt).toISOString().split('T')[0],
-        helpfulNotes: ticket.helpfulNotes,
-      }));
-
-      setTickets(mapped);
-    } catch (err) {
-      console.error('Error fetching tickets:', err);
-      toast.error('Failed to fetch tickets');
-    } finally {
-      setLoading(false);
+      if (response.ok) {
+        const data = await response.json();
+        const decoded = JSON.parse(atob(token.split('.')[1]));
+        setCurrentUser(decoded);
+        setModerators(data.users || []);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
     }
   };
 
-  useEffect(() => {
-    if (activeTab === 'moderators' && currentUser?.role === 'admin') {
-      fetchModerators();
-    }
-  }, [activeTab, currentUser]);
-
-  const fetchModerators = async () => {
+  const fetchTickets = async (token) => {
     setLoading(true);
     try {
-      const token = getToken();
-      const res = await fetch(`${Serverurl}/api/auth/users`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+      const response = await fetch(`${Serverurl}/api/ticket/get`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      if (!res.ok) throw new Error('Failed to fetch users');
-      const data = await res.json();
-      setModerators(data.users || []);
-    } catch (err) {
-      console.error('Error fetching moderators:', err);
-      toast.error('Failed to fetch moderators');
+      if (response.ok) {
+        const data = await response.json();
+        const mappedTickets = data.tickets.map((ticket) => ({
+          id: ticket._id,
+          title: ticket.title,
+          description: ticket.description,
+          status: ticket.status?.toLowerCase().replace('_', '-') || 'todo',
+          priority: ticket.priority?.toLowerCase() || 'medium',
+          category: ticket.relatedSkills?.[0] || 'General',
+          assignee: ticket.assignedTo?.email || 'Unassigned',
+          date: new Date(ticket.createdAt).toISOString().split('T')[0],
+        }));
+        setTickets(mappedTickets);
+      }
+    } catch (error) {
+      console.error('Error fetching tickets:', error);
+      toast.error('Failed to load tickets');
     } finally {
       setLoading(false);
     }
@@ -135,38 +98,35 @@ export default function Dashboard() {
 
     setLoading(true);
     try {
-      const token = getToken();
-      const res = await fetch(`${Serverurl}/api/ticket/create`, {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`${Serverurl}/api/ticket/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(newTicket),
       });
 
-      if (!res.ok) throw new Error('Failed to create ticket');
-      const data = await res.json();
-      const ticket = data.ticket;
-
-      const mappedTicket = {
-        id: ticket._id,
-        title: ticket.title,
-        description: ticket.description,
-        status: ticket.status?.toLowerCase().replace('_', '-') || 'todo',
-        priority: ticket.priority?.toLowerCase() || 'medium',
-        category: ticket.relatedSkills?.[0] || 'General',
-        assignee: ticket.assignedTo?.email || 'Unassigned',
-        date: new Date(ticket.createdAt).toISOString().split('T')[0],
-        helpfulNotes: ticket.helpfulNotes,
-      };
-
-      setTickets([mappedTicket, ...tickets]);
-      setNewTicket({ title: '', description: '' });
-      setShowCreateModal(false);
-      toast.success('Ticket created successfully!');
-    } catch (err) {
-      console.error('Error creating ticket:', err);
+      if (response.ok) {
+        const data = await response.json();
+        const mappedTicket = {
+          id: data.ticket._id,
+          title: data.ticket.title,
+          description: data.ticket.description,
+          status: data.ticket.status?.toLowerCase().replace('_', '-') || 'todo',
+          priority: data.ticket.priority?.toLowerCase() || 'medium',
+          category: data.ticket.relatedSkills?.[0] || 'General',
+          assignee: data.ticket.assignedTo?.email || 'Unassigned',
+          date: new Date(data.ticket.createdAt).toISOString().split('T')[0],
+        };
+        setTickets([mappedTicket, ...tickets]);
+        setNewTicket({ title: '', description: '' });
+        setShowCreateModal(false);
+        toast.success('Ticket created successfully!');
+      }
+    } catch (error) {
+      console.error('Error creating ticket:', error);
       toast.error('Failed to create ticket');
     } finally {
       setLoading(false);
@@ -175,183 +135,129 @@ export default function Dashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
-    window.location.href = '/';
+    navigate('/');
   };
-
 
   const getPriorityColor = (priority) => {
     const colors = {
-      critical: 'danger',    // Red
-      high: 'danger',        // Red
-      medium: 'warning',     // Orange/Yellow
-      low: 'success',        // Green
+      critical: 'danger',
+      high: 'danger',
+      medium: 'warning',
+      low: 'success',
     };
     return colors[priority] || 'default';
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      'closed': 'success',
-      'in-progress': 'primary',
-      'todo': 'warning',
-    };
-    return colors[status] || 'default';
-  };
-
   const getStatusIcon = (status) => {
-    if (status === 'closed') return <CheckCircle className="w-5 h-5" />;
-    if (status === 'in-progress') return <Clock className="w-5 h-5" />;
-    return <AlertCircle className="w-5 h-5" />;
+    const icons = {
+      closed: <CheckCircle className="h-5 w-5" />,
+      'in-progress': <Clock className="h-5 w-5" />,
+      todo: <AlertCircle className="h-5 w-5" />,
+    };
+    return icons[status] || <AlertCircle className="h-5 w-5" />;
   };
 
-  const filteredTickets = tickets.filter(t =>
-    t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredTickets = tickets.filter(
+    (ticket) =>
+      ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      ticket.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const stats = [
     {
       label: 'Total Tickets',
       value: tickets.length,
-      icon: <Ticket className="w-6 h-6" />,
-      color: 'bg-indigo-100 text-indigo-600'
-    },
-    {
-      label: 'Resolved',
-      value: tickets.filter(t => t.status === 'closed').length,
-      icon: <CheckCircle className="w-6 h-6" />,
-      color: 'bg-green-100 text-green-600'
+      icon: <Ticket className="h-5 w-5" />,
+      color: 'bg-blue-100 text-blue-600',
     },
     {
       label: 'In Progress',
-      value: tickets.filter(t => t.status === 'in-progress').length,
-      icon: <Clock className="w-6 h-6" />,
-      color: 'bg-yellow-100 text-yellow-600'
+      value: tickets.filter((t) => t.status === 'in-progress').length,
+      icon: <Clock className="h-5 w-5" />,
+      color: 'bg-yellow-100 text-yellow-600',
     },
     {
-      label: 'Pending',
-      value: tickets.filter(t => t.status === 'todo').length,
-      icon: <AlertCircle className="w-6 h-6" />,
-      color: 'bg-purple-100 text-purple-600'
+      label: 'Completed',
+      value: tickets.filter((t) => t.status === 'closed').length,
+      icon: <CheckCircle className="h-5 w-5" />,
+      color: 'bg-green-100 text-green-600',
+    },
+    {
+      label: 'Team Members',
+      value: moderators.length,
+      icon: <Users className="h-5 w-5" />,
+      color: 'bg-purple-100 text-purple-600',
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50">
+    <div className="min-h-screen animated-gradient">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 border-b border-indigo-700 sticky top-0 z-40 shadow-md">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
-                <Ticket className="w-6 h-6 text-white" />
+      <div className="glass backdrop-blur-xl border-b border-white/20 sticky top-0 z-40 shadow-2xl">
+        <div className="mx-auto max-w-7xl px-6 py-4">
+          <div className="flex items-center justify-between">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3"
+            >
+              <div className="rounded-xl bg-white/20 p-2 backdrop-blur-sm glow-hover float">
+                <Ticket className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-white">
-                TicketAI Dashboard
-              </h1>
-            </div>
+              <h1 className="text-2xl font-bold text-white">TicketAI Dashboard</h1>
+            </motion.div>
 
-            <div className="flex items-center gap-4">
-              <Dropdown placement="bottom-end">
-                <DropdownTrigger>
-                  <Avatar
-                    as="button"
-                    className="transition-transform"
-                    color="secondary"
-                    name={currentUser?.email}
-                    size="sm"
-                    showFallback
-                  />
-                </DropdownTrigger>
-                <DropdownMenu aria-label="Profile Actions" variant="flat">
-                  <DropdownItem key="profile" className="h-14 gap-2">
-                    <p className="font-semibold">Signed in as</p>
-                    <p className="font-semibold">{currentUser?.email}</p>
-                  </DropdownItem>
-                  <DropdownItem key="role">
-                    Role: {currentUser?.role || 'user'}
-                  </DropdownItem>
-                  <DropdownItem key="logout" color="danger" onClick={handleLogout}>
-                    Log Out
-                  </DropdownItem>
-                </DropdownMenu>
-              </Dropdown>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-4"
+            >
+              <span className="text-sm text-white/90">{currentUser?.email}</span>
+              <Button variant="ghost" onClick={handleLogout} className="text-white hover:bg-white/10">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </motion.div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="mx-auto max-w-7xl px-6 py-8">
         {/* Tabs */}
-        <Tabs
-          aria-label="Dashboard tabs"
-          selectedKey={activeTab}
-          onSelectionChange={setActiveTab}
-          color="primary"
-          variant="underlined"
-          classNames={{
-            tabList: "gap-6 w-full relative rounded-none p-0 border-b border-gray-200",
-            cursor: "w-full bg-indigo-600",
-            tab: "max-w-fit px-0 h-12",
-            tabContent: "group-data-[selected=true]:text-indigo-600"
-          }}
-        >
-          <Tab
-            key="tickets"
-            title={
-              <div className="flex items-center space-x-2">
-                <Ticket className="w-5 h-5" />
-                <span>Tickets</span>
-              </div>
-            }
-          />
-          <Tab
-            key="moderators"
-            title={
-              <div className="flex items-center space-x-2">
-                <Users className="w-5 h-5" />
-                <span>Team</span>
-              </div>
-            }
-          />
-          <Tab
-            key="analytics"
-            title={
-              <div className="flex items-center space-x-2">
-                <BarChart3 className="w-5 h-5" />
-                <span>Analytics</span>
-              </div>
-            }
-          />
-        </Tabs>
+        <Tabs defaultValue="tickets" onValueChange={setActiveTab} className="mb-8">
+          <TabsList>
+            <TabsTrigger value="tickets">
+              <Ticket className="mr-2 h-4 w-4" />
+              Tickets
+            </TabsTrigger>
+            <TabsTrigger value="team">
+              <Users className="mr-2 h-4 w-4" />
+              Team
+            </TabsTrigger>
+            <TabsTrigger value="analytics">
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Analytics
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Tab Content */}
-        <div className="mt-8">
           {/* Tickets Tab */}
-          {activeTab === 'tickets' && (
+          <TabsContent value="tickets">
             <div className="space-y-6">
               {/* Search and Create */}
               <div className="flex gap-4">
-                <Input
-                  type="text"
-                  placeholder="Search tickets..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  startContent={<Search className="w-5 h-5 text-gray-400" />}
-                  variant="underlined"
-                  classNames={{
-                    inputWrapper: "border-gray-100",
-                    input: "pl-2"
-                  }}
-                  className="flex-1"
-                />
-                <Button
-                  color="primary"
-                  startContent={<Plus className="w-5 h-5" />}
-                  onClick={() => setShowCreateModal(true)}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg hover:shadow-xl transition-shadow"
-                >
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search tickets..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 bg-white/90 backdrop-blur-sm"
+                  />
+                </div>
+                <Button onClick={() => setShowCreateModal(true)}>
+                  <Plus className="mr-2 h-5 w-5" />
                   New Ticket
                 </Button>
               </div>
@@ -359,259 +265,208 @@ export default function Dashboard() {
               {/* Tickets List */}
               {loading ? (
                 <div className="flex justify-center py-20">
-                  <Spinner size="lg" color="primary" />
+                  <Spinner size="lg" />
                 </div>
               ) : filteredTickets.length === 0 ? (
-                <Card className="border border-gray-200 shadow-sm">
-                  <CardBody className="text-center py-20">
-                    <Ticket className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-600 text-lg">No tickets found</p>
-                  </CardBody>
+                <Card className="backdrop-blur-sm bg-white/90">
+                  <CardContent className="py-20 text-center">
+                    <Ticket className="mx-auto h-12 w-12 text-neutral-400 mb-4" />
+                    <p className="text-neutral-600">No tickets found</p>
+                  </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-3">
-                  {filteredTickets.map((ticket) => (
-                    <Card
-                      key={ticket.id}
-                      className="border border-gray-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all"
-                      isPressable
-                    >
-                      <CardBody className="p-5">
-                        <div className="flex items-start gap-6">
-                          {/* Left: Avatar & Assigned To */}
-                          <div className="flex items-start gap-3 min-w-[180px]">
-                            <div className="w-9 h-9 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
-                              <User className="w-4 h-4 text-indigo-600" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs text-gray-500 mb-0.5">Assigned to</p>
-                              <p className="text-sm font-semibold text-gray-900">{ticket.assignee}</p>
-                            </div>
+                <HoverEffect
+                  items={filteredTickets.map((ticket) => ({
+                    id: ticket.id,
+                    children: (
+                      <div className="space-y-4">
+                        {/* Header with Priority and Status */}
+                        <div className="flex items-center justify-between">
+                          <Badge variant={getPriorityColor(ticket.priority)} className="uppercase text-xs">
+                            {ticket.priority}
+                          </Badge>
+                          <div className="text-neutral-600">{getStatusIcon(ticket.status)}</div>
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-lg font-bold text-neutral-900 line-clamp-2" title={ticket.title}>
+                          {ticket.title}
+                        </h3>
+
+                        {/* Description */}
+                        <p className="text-sm text-neutral-600 line-clamp-3" title={ticket.description}>
+                          {ticket.description}
+                        </p>
+
+                        {/* Metadata */}
+                        <div className="space-y-2 pt-2 border-t border-neutral-200">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-neutral-400" />
+                            <span className="text-sm font-bold text-neutral-900">{ticket.assignee}</span>
                           </div>
-
-
-                          {/* Center: Priority, Title, ID & Description */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start gap-3 mb-2">
-                              <Chip
-                                color={getPriorityColor(ticket.priority)}
-                                variant="flat"
-                                size="sm"
-                                className="uppercase font-semibold flex-shrink-0"
-                              >
-                                {ticket.priority}
-                              </Chip>
-                              <div className="text-indigo-600 mt-0.5 flex-shrink-0">
-                                {getStatusIcon(ticket.status)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h3
-                                  className="text-base font-bold text-gray-900 mb-0.5 truncate cursor-help"
-                                  title={ticket.title}
-                                >
-                                  {ticket.title}
-                                </h3>
-                                <p className="text-xs text-gray-500">
-                                  ID: #{ticket.id.slice(0, 8)}
-                                </p>
-                              </div>
-                            </div>
-                            <p
-                              className="text-sm text-gray-600 line-clamp-2 ml-0 cursor-help"
-                              title={ticket.description}
-                            >
-                              {ticket.description}
-                            </p>
+                          <div className="flex items-center justify-between text-xs text-neutral-500">
+                            <span>{ticket.category}</span>
+                            <span>{ticket.date}</span>
                           </div>
-
-                          {/* Right: Category, Status, Date */}
-                          <div className="flex items-start gap-8 min-w-[400px]">
-                            <div className="min-w-[120px]">
-                              <p className="text-xs text-gray-500 mb-1.5">Category</p>
-                              <p className="text-sm font-medium text-gray-900">{ticket.category}</p>
-                            </div>
-                            <div className="min-w-[100px]">
-                              <p className="text-xs text-gray-500 mb-1.5">Status</p>
-                              <p className="text-sm font-medium text-gray-900">{ticket.status}</p>
-                            </div>
-                            <div className="min-w-[90px]">
-                              <p className="text-xs text-gray-500 mb-1.5">Date</p>
-                              <p className="text-sm font-medium text-gray-900">{ticket.date}</p>
-                            </div>
+                          <div className="text-xs text-neutral-400">
+                            ID: #{ticket.id.slice(0, 8)}
                           </div>
                         </div>
-                      </CardBody>
-                    </Card>
-                  ))}
-                </div>
+                      </div>
+                    ),
+                  }))}
+                  className="gap-4"
+                />
               )}
             </div>
-          )}
+          </TabsContent>
 
-          {/* Moderators Tab */}
-          {activeTab === 'moderators' && (
-            <div>
-              {currentUser?.role === 'admin' ? (
-                loading ? (
-                  <div className="flex justify-center py-20">
-                    <Spinner size="lg" color="primary" />
-                  </div>
-                ) : (
-                  <div className="grid gap-3">
-                    {moderators.map((mod) => (
-                      <Card
-                        key={mod._id}
-                        className="border border-gray-200 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all"
-                      >
-                        <CardBody className="p-5">
+          {/* Team Tab */}
+          <TabsContent value="team">
+            {currentUser?.role === 'admin' ? (
+              loading ? (
+                <div className="flex justify-center py-20">
+                  <Spinner size="lg" />
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {moderators.map((mod, index) => (
+                    <motion.div
+                      key={mod._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Card className="backdrop-blur-sm bg-white/90 hover:shadow-xl transition-all">
+                        <CardContent className="p-5">
                           <div className="flex items-center gap-6">
-                            {/* Left: Avatar */}
                             <div className="flex-shrink-0">
                               <div className="relative">
-                                <div className="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100">
                                   <span className="text-lg font-bold text-indigo-600">
                                     {mod.email.charAt(0).toUpperCase()}
                                   </span>
                                 </div>
-                                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                                <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white bg-green-500"></div>
                               </div>
                             </div>
 
-                            {/* Center: Name & Role */}
-                            <div className="flex-1 min-w-0">
-                              <h3 className="text-base font-bold text-gray-900 mb-1">
-                                {mod.email.split('@')[0]}
-                              </h3>
-                              <p className="text-sm text-gray-600">{mod.role}</p>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-base font-bold text-neutral-900">{mod.email.split('@')[0]}</h3>
+                              <p className="text-sm text-neutral-600">{mod.role}</p>
                             </div>
 
-                            {/* Right: Email & Skills */}
-                            <div className="flex items-center gap-8 min-w-[500px]">
+                            <div className="flex min-w-[500px] items-center gap-8">
                               <div className="min-w-[200px]">
-                                <p className="text-xs text-gray-500 mb-1">Email</p>
-                                <p className="text-sm font-medium text-gray-900 truncate" title={mod.email}>
+                                <p className="mb-1 text-xs text-neutral-500">Email</p>
+                                <p className="truncate text-sm font-medium text-neutral-900" title={mod.email}>
                                   {mod.email}
                                 </p>
                               </div>
                               <div className="flex-1">
-                                <p className="text-xs text-gray-500 mb-1.5">Skills</p>
+                                <p className="mb-1.5 text-xs text-neutral-500">Skills</p>
                                 {mod.skills && mod.skills.length > 0 ? (
                                   <div className="flex flex-wrap gap-2">
                                     {mod.skills.slice(0, 3).map((skill, idx) => (
-                                      <span
-                                        key={idx}
-                                        className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 rounded text-xs font-medium"
-                                      >
+                                      <Badge key={idx} variant="default" className="text-xs">
                                         {skill}
-                                      </span>
+                                      </Badge>
                                     ))}
                                     {mod.skills.length > 3 && (
-                                      <span className="px-2.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-medium">
+                                      <Badge variant="secondary" className="text-xs">
                                         +{mod.skills.length - 3}
-                                      </span>
+                                      </Badge>
                                     )}
                                   </div>
                                 ) : (
-                                  <p className="text-sm text-gray-400">No skills</p>
+                                  <p className="text-sm text-neutral-400">No skills</p>
                                 )}
                               </div>
                             </div>
                           </div>
-                        </CardBody>
+                        </CardContent>
                       </Card>
-                    ))}
-                  </div>
-                )
-              ) : (
-                <Card className="border border-gray-200 shadow-sm">
-                  <CardBody className="text-center py-20">
-                    <Users className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-600 text-lg">
-                      Only admins can view team members
-                    </p>
-                  </CardBody>
-                </Card>
-              )}
-            </div>
-          )}
+                    </motion.div>
+                  ))}
+                </div>
+              )
+            ) : (
+              <Card className="backdrop-blur-sm bg-white/90">
+                <CardContent className="py-20 text-center">
+                  <Users className="mx-auto h-12 w-12 text-neutral-400 mb-4" />
+                  <p className="text-neutral-600">Only admins can view team members</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
           {/* Analytics Tab */}
-          {activeTab === 'analytics' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <TabsContent value="analytics">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
               {stats.map((stat, i) => (
-                <Card
+                <motion.div
                   key={i}
-                  className="border-2 border-transparent bg-gradient-to-br from-white to-gray-50 shadow-md hover:shadow-xl hover:border-indigo-200 transition-all"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.1 }}
                 >
-                  <CardBody className="p-6">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-gray-600 text-sm mb-1 font-medium">{stat.label}</p>
-                        <p className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{stat.value}</p>
+                  <Card className="backdrop-blur-sm bg-white/90 hover:shadow-2xl transition-all spotlight">
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="mb-1 text-sm font-medium text-neutral-600">{stat.label}</p>
+                          <p className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                            {stat.value}
+                          </p>
+                        </div>
+                        <div className={`rounded-xl p-3 shadow-lg float ${stat.color}`}>{stat.icon}</div>
                       </div>
-                      <div className={`p-3 rounded-xl ${stat.color} shadow-sm`}>{stat.icon}</div>
-                    </div>
-                  </CardBody>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               ))}
             </div>
-          )}
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
-
       {/* Create Ticket Modal */}
-      <CustomModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        title="Create New Ticket"
-        subtitle="Describe your issue and we'll help you resolve it"
-        size="md"
-      >
-        <div className="space-y-5">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Ticket Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              placeholder="e.g., Unable to login to my account"
-              value={newTicket.title}
-              onChange={(e) => setNewTicket({ ...newTicket, title: e.target.value })}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
-            />
+      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)}>
+        <ModalHeader onClose={() => setShowCreateModal(false)}>
+          <ModalTitle>Create New Ticket</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-700">Title</label>
+              <Input
+                type="text"
+                placeholder="Enter ticket title"
+                value={newTicket.title}
+                onChange={(e) => setNewTicket({ ...newTicket, title: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-neutral-700">Description</label>
+              <textarea
+                placeholder="Describe the issue..."
+                value={newTicket.description}
+                onChange={(e) => setNewTicket({ ...newTicket, description: e.target.value })}
+                rows={4}
+                className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Issue Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              placeholder="Please provide detailed information about your issue..."
-              value={newTicket.description}
-              onChange={(e) => setNewTicket({ ...newTicket, description: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400 resize-none"
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4 border-t border-gray-200">
-            <button
-              onClick={() => setShowCreateModal(false)}
-              className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleCreateTicket}
-              disabled={loading}
-              className="flex-1 px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Creating...' : 'Create Ticket'}
-            </button>
-          </div>
-        </div>
-      </CustomModal>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleCreateTicket} disabled={loading}>
+            {loading ? 'Creating...' : 'Create Ticket'}
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

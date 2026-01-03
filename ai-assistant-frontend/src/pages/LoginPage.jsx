@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Serverurl } from '../App.jsx';
 import { toast } from 'react-hot-toast';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { cn } from '../lib/utils';
 
 // API Call Functions
 const apiCall = {
@@ -57,7 +61,6 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignUp }) {
 
   // Login Handler
   const handleLogin = async () => {
-    // Frontend Validation
     if (!loginForm.email) {
       toast.error('Email is required');
       return;
@@ -77,16 +80,9 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignUp }) {
 
     setLoading(true);
     try {
-      // API Call to Backend
       const response = await apiCall.login(loginForm.email, loginForm.password);
-
-      // Store token in localStorage
       localStorage.setItem('authToken', response.token);
-
-      // Clear form
       setLoginForm({ email: '', password: '' });
-
-      // Call parent callback
       setTimeout(() => {
         onLoginSuccess(response.user, response.token);
       }, 500);
@@ -139,7 +135,6 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignUp }) {
     try {
       await apiCall.resetPassword(resetEmail, resetCode, newPassword);
       toast.success('Password reset successful! You can now login');
-      // Reset all states
       setShowForgotPassword(false);
       setShowResetForm(false);
       setResetEmail('');
@@ -155,10 +150,14 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignUp }) {
   // Forgot Password View
   if (showForgotPassword) {
     return (
-      <div className="space-y-6">
-        {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+      >
         <div className="text-center">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => {
               setShowForgotPassword(false);
               setShowResetForm(false);
@@ -166,151 +165,147 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignUp }) {
               setResetCode('');
               setNewPassword('');
             }}
-            className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-700 mb-4"
+            className="mb-4"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Login
-          </button>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          </Button>
+          <h2 className="text-3xl font-bold text-neutral-900 dark:text-neutral-50">
             {showResetForm ? 'Reset Password' : 'Forgot Password'}
           </h2>
-          <p className="text-sm text-gray-600">
+          <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
             {showResetForm
               ? 'Enter the code sent to your email and your new password'
               : 'Enter your email to receive a reset code'}
           </p>
         </div>
 
-        {/* Form */}
         {!showResetForm ? (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
                 Email
               </label>
               <div className="relative">
-                <Mail size={18} className="absolute left-3 top-3 text-gray-400" />
-                <input
+                <Mail className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
+                <Input
                   type="email"
                   placeholder="Enter your email"
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+                  className="pl-10"
                 />
               </div>
             </div>
 
-            <button
-              onClick={handleForgotPassword}
-              disabled={loading}
-              className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button onClick={handleForgotPassword} disabled={loading} className="w-full">
               {loading ? 'Sending...' : 'Send Reset Code'}
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
                 Reset Code
               </label>
-              <input
+              <Input
                 type="text"
                 placeholder="Enter 6-digit code"
                 value={resetCode}
                 onChange={(e) => setResetCode(e.target.value)}
                 maxLength={6}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400 text-center text-2xl tracking-widest"
+                className="text-center text-2xl tracking-widest"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="mb-2 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
                 New Password
               </label>
               <div className="relative">
-                <Lock size={18} className="absolute left-3 top-3 text-gray-400" />
-                <input
+                <Lock className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
+                <Input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter new password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+                  className="pl-10 pr-10"
                 />
                 <button
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                  className="absolute right-3 top-3 text-neutral-400 hover:text-neutral-600"
                   type="button"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
 
-            <button
-              onClick={handleResetPassword}
-              disabled={loading}
-              className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button onClick={handleResetPassword} disabled={loading} className="w-full">
               {loading ? 'Resetting...' : 'Reset Password'}
-            </button>
+            </Button>
           </div>
         )}
-      </div>
+      </motion.div>
     );
   }
 
   // Login View
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign In</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-3xl font-bold text-neutral-900 dark:text-neutral-50">Sign In</h2>
+        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
           Don't have an account?{' '}
-          <button onClick={onSwitchToSignUp} className="text-indigo-600 font-semibold hover:underline">
+          <button
+            onClick={onSwitchToSignUp}
+            className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+          >
             Sign up
           </button>
         </p>
       </div>
 
-      {/* Form */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="mb-2 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
             Email
           </label>
           <div className="relative">
-            <Mail size={18} className="absolute left-3 top-3 text-gray-400" />
-            <input
+            <Mail className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
+            <Input
               type="email"
               placeholder="Enter your email"
               value={loginForm.email}
               onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+              className="pl-10"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <label className="mb-2 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
             Password
           </label>
           <div className="relative">
-            <Lock size={18} className="absolute left-3 top-3 text-gray-400" />
-            <input
+            <Lock className="absolute left-3 top-3 h-5 w-5 text-neutral-400" />
+            <Input
               type={showPassword ? 'text' : 'password'}
               placeholder="Enter your password"
               value={loginForm.password}
               onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-              className="w-full pl-10 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+              className="pl-10 pr-10"
             />
             <button
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+              className="absolute right-3 top-3 text-neutral-400 hover:text-neutral-600"
               type="button"
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
         </div>
@@ -318,20 +313,16 @@ export default function LoginPage({ onLoginSuccess, onSwitchToSignUp }) {
         <div className="text-right">
           <button
             onClick={() => setShowForgotPassword(true)}
-            className="text-sm text-indigo-600 hover:text-indigo-700 font-semibold"
+            className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
           >
             Forgot Password?
           </button>
         </div>
 
-        <button
-          onClick={handleLogin}
-          disabled={loading}
-          className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
+        <Button onClick={handleLogin} disabled={loading} className="w-full">
           {loading ? 'Signing In...' : 'Sign In'}
-        </button>
+        </Button>
       </div>
-    </div>
+    </motion.div>
   );
 }
