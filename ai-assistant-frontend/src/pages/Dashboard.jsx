@@ -110,21 +110,15 @@ export default function Dashboard() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        const mappedTicket = {
-          id: data.ticket._id,
-          title: data.ticket.title,
-          description: data.ticket.description,
-          status: data.ticket.status?.toLowerCase().replace('_', '-') || 'todo',
-          priority: data.ticket.priority?.toLowerCase() || 'medium',
-          category: data.ticket.relatedSkills?.[0] || 'General',
-          assignee: data.ticket.assignedTo?.email || 'Unassigned',
-          date: new Date(data.ticket.createdAt).toISOString().split('T')[0],
-        };
-        setTickets([mappedTicket, ...tickets]);
         setNewTicket({ title: '', description: '' });
         setShowCreateModal(false);
         toast.success('Ticket created successfully!');
+
+        // Refetch all tickets to get the latest data including assignee
+        await fetchTickets(token);
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to create ticket');
       }
     } catch (error) {
       console.error('Error creating ticket:', error);
