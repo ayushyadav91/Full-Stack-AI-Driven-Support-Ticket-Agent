@@ -50,15 +50,15 @@ export default function SignUpPage({ onSignUpSuccess, onSwitchToLogin }) {
     return re.test(email);
   };
 
-  const handleAddSkill = (e) => {
-    if (e.key === 'Enter' && skillInput.trim()) {
-      e.preventDefault();
+  const handleAddSkill = () => {
+    if (skillInput.trim()) {
       if (!signupForm.skills.includes(skillInput.trim())) {
         setSignupForm({
           ...signupForm,
           skills: [...signupForm.skills, skillInput.trim()],
         });
         setSkillInput('');
+        toast.success(`Added skill: ${skillInput.trim()}`);
       } else {
         toast.error('Skill already added');
       }
@@ -199,26 +199,55 @@ export default function SignUpPage({ onSignUpSuccess, onSwitchToLogin }) {
           <label className="mb-2 block text-sm font-semibold text-neutral-700 dark:text-neutral-300">
             Skills (Optional)
           </label>
-          <Input
-            type="text"
-            placeholder="Type a skill and press Enter"
-            value={skillInput}
-            onChange={(e) => setSkillInput(e.target.value)}
-            onKeyDown={handleAddSkill}
-          />
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              placeholder="Enter a skill (e.g., JavaScript, Python)"
+              value={skillInput}
+              onChange={(e) => setSkillInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddSkill();
+                }
+              }}
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAddSkill}
+              disabled={!skillInput.trim()}
+              className="px-6"
+            >
+              Add
+            </Button>
+          </div>
+
           {signupForm.skills.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {signupForm.skills.map((skill, index) => (
-                <Badge key={index} variant="default" className="flex items-center gap-1">
-                  {skill}
-                  <button
-                    onClick={() => handleRemoveSkill(skill)}
-                    className="ml-1 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-800"
+            <div className="mt-3">
+              <p className="text-xs text-neutral-500 mb-2">
+                {signupForm.skills.length} skill{signupForm.skills.length !== 1 ? 's' : ''} added
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {signupForm.skills.map((skill, index) => (
+                  <Badge
+                    key={index}
+                    variant="default"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-black text-white hover:bg-gray-800 transition-colors"
                   >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
+                    <span>{skill}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSkill(skill)}
+                      className="rounded-full hover:bg-white/20 p-0.5 transition-colors"
+                      title="Remove skill"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
             </div>
           )}
         </div>
