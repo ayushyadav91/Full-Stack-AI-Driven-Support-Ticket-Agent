@@ -119,6 +119,78 @@ export const updateUser = async (req, res) => {
   }
 }
 
+export const getOwnProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json({
+      user: {
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+        skills: user.skills || [],
+        profilePicture: user.profilePicture || null
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    res.status(500).json({ message: "Failed to fetch profile" });
+  }
+}
+
+export const updateOwnProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Parse skills from FormData (sent as JSON string)
+    if (req.body.skills) {
+      try {
+        const skills = JSON.parse(req.body.skills);
+        user.skills = skills;
+      } catch (e) {
+        // If not JSON, treat as is
+        user.skills = req.body.skills;
+      }
+    }
+
+    // Handle profile picture upload
+    if (req.file) {
+      // Delete old profile picture if it exists
+      if (user.profilePicture) {
+        const fs = await import('fs');
+        const path = await import('path');
+        const oldPicturePath = path.join(process.cwd(), user.profilePicture);
+        if (fs.existsSync(oldPicturePath)) {
+          fs.unlinkSync(oldPicturePath);
+        }
+      }
+      // Save new profile picture path
+      user.profilePicture = `/uploads/profiles/${req.file.filename}`;
+    }
+
+    await user.save();
+
+    return res.json({
+      message: "Profile updated successfully",
+      user: {
+        email: user.email,
+        role: user.role,
+        skills: user.skills,
+        profilePicture: user.profilePicture
+      }
+    });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+}
+
 export const getUser = async (req, res) => {
   try {
     if (req.user?.role !== "admin") {

@@ -17,6 +17,10 @@ const userSchema = new mongoose.Schema({
     default: "user"
   },
   skills: [String],
+  profilePicture: {
+    type: String,
+    default: null
+  },
   resetPasswordToken: {
     type: String,
     default: null

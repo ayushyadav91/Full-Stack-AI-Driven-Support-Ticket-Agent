@@ -13,6 +13,8 @@ import {
   CheckCircle,
   LogOut,
   X,
+  UserCircle,
+  Info,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Serverurl } from '../App.jsx';
@@ -35,6 +37,13 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('tickets');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTicket, setNewTicket] = useState({ title: '', description: '' });
+  const [userSkills, setUserSkills] = useState([]);
+  const [skillInput, setSkillInput] = useState('');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [selectedTicketNotes, setSelectedTicketNotes] = useState(null);
+  const [profilePicture, setProfilePicture] = useState(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,7 +54,25 @@ export default function Dashboard() {
     }
     fetchUserData(token);
     fetchTickets(token);
+    fetchUserProfile(token);
   }, [navigate]);
+
+  const fetchUserProfile = async (token) => {
+    try {
+      const response = await fetch(`${Serverurl}/api/auth/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserSkills(data.user.skills || []);
+        if (data.user.profilePicture) {
+          setProfilePicturePreview(`${Serverurl}${data.user.profilePicture}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   const fetchUserData = async (token) => {
     try {
@@ -80,6 +107,7 @@ export default function Dashboard() {
           category: ticket.relatedSkills?.[0] || 'General',
           assignee: ticket.assignedTo?.email || 'Unassigned',
           date: new Date(ticket.createdAt).toISOString().split('T')[0],
+          helpfulNotes: ticket.helpfulNotes || null,
         }));
         setTickets(mappedTickets);
       }
@@ -125,6 +153,41 @@ export default function Dashboard() {
       toast.error('Failed to create ticket');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateSkills = async (newSkills, profilePictureFile = null) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const formData = new FormData();
+      formData.append('skills', JSON.stringify(newSkills));
+
+      if (profilePictureFile) {
+        formData.append('profilePicture', profilePictureFile);
+      }
+
+      const response = await fetch(`${Serverurl}/api/auth/update-profile`, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success('Profile updated successfully!');
+        setCurrentUser({ ...currentUser, skills: newSkills });
+        if (data.user.profilePicture) {
+          setProfilePicturePreview(`${Serverurl}${data.user.profilePicture}`);
+        }
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
     }
   };
 
@@ -234,6 +297,10 @@ export default function Dashboard() {
               <BarChart3 className="mr-2 h-4 w-4" />
               Analytics
             </TabsTrigger>
+            <TabsTrigger value="profile">
+              <UserCircle className="mr-2 h-4 w-4" />
+              Profile
+            </TabsTrigger>
           </TabsList>
 
           {/* Tickets Tab */}
@@ -275,11 +342,29 @@ export default function Dashboard() {
                     id: ticket.id,
                     children: (
                       <div className="space-y-4">
-                        {/* Header with Priority and Status */}
+                        {/* Header with Priority, Status, and Info Button */}
                         <div className="flex items-center justify-between">
-                          <Badge variant={getPriorityColor(ticket.priority)} className="uppercase text-xs">
-                            {ticket.priority}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={getPriorityColor(ticket.priority)} className="uppercase text-xs">
+                              {ticket.priority}
+                            </Badge>
+                            {ticket.helpfulNotes && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTicketNotes({
+                                    title: ticket.title,
+                                    notes: ticket.helpfulNotes
+                                  });
+                                  setShowNotesModal(true);
+                                }}
+                                className="p-1.5 rounded-full hover:bg-blue-100 transition-colors"
+                                title="View helpful notes"
+                              >
+                                <Info className="h-4 w-4 text-blue-600" />
+                              </button>
+                            )}
+                          </div>
                           <div className="text-neutral-600">{getStatusIcon(ticket.status)}</div>
                         </div>
 
@@ -412,6 +497,214 @@ export default function Dashboard() {
               ))}
             </div>
           </TabsContent>
+
+          {/* Profile Tab */}
+          <TabsContent value="profile">
+            <div className="space-y-6">
+              {/* User Info Card */}
+              <Card className="backdrop-blur-sm bg-white/90">
+                <CardHeader>
+                  <CardTitle>Profile Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center gap-6">
+                    <div className="relative">
+                      {profilePicturePreview ? (
+                        <img
+                          src={profilePicturePreview}
+                          alt="Profile"
+                          className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-lg"
+                        />
+                      ) : (
+                        <div className="h-24 w-24 rounded-full bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-3xl font-bold text-white border-4 border-white shadow-lg">
+                          {currentUser?.email?.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <label
+                        htmlFor="profile-picture-upload"
+                        className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                        title="Change profile picture"
+                      >
+                        <User className="h-4 w-4 text-neutral-600" />
+                      </label>
+                      <input
+                        id="profile-picture-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            if (file.size > 5 * 1024 * 1024) {
+                              toast.error('File size must be less than 5MB');
+                              return;
+                            }
+                            setProfilePicture(file);
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setProfilePicturePreview(reader.result);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-2xl font-bold text-neutral-900">{currentUser?.email?.split('@')[0]}</h3>
+                      <p className="text-neutral-600">{currentUser?.email}</p>
+                      <Badge variant="default" className="mt-2">{currentUser?.role}</Badge>
+                      {profilePicture && (
+                        <div className="mt-3">
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              await updateSkills(userSkills, profilePicture);
+                              setProfilePicture(null);
+                            }}
+                          >
+                            Upload Picture
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Skills Management */}
+              <Card className="backdrop-blur-sm bg-white/90">
+                <CardHeader>
+                  <CardTitle>Skills</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="Add a new skill"
+                      value={skillInput}
+                      onChange={(e) => setSkillInput(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter' && skillInput.trim()) {
+                          e.preventDefault();
+                          if (!userSkills.includes(skillInput.trim())) {
+                            const newSkills = [...userSkills, skillInput.trim()];
+                            setUserSkills(newSkills);
+                            setSkillInput('');
+                            await updateSkills(newSkills);
+                          } else {
+                            toast.error('Skill already exists');
+                          }
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={async () => {
+                        if (skillInput.trim()) {
+                          if (!userSkills.includes(skillInput.trim())) {
+                            const newSkills = [...userSkills, skillInput.trim()];
+                            setUserSkills(newSkills);
+                            setSkillInput('');
+                            await updateSkills(newSkills);
+                          } else {
+                            toast.error('Skill already exists');
+                          }
+                        }
+                      }}
+                      disabled={!skillInput.trim()}
+                    >
+                      Add Skill
+                    </Button>
+                  </div>
+
+                  {userSkills.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {userSkills.map((skill, idx) => (
+                        <Badge key={idx} variant="default" className="flex items-center gap-2">
+                          {skill}
+                          <button
+                            onClick={async () => {
+                              const newSkills = userSkills.filter((s) => s !== skill);
+                              setUserSkills(newSkills);
+                              await updateSkills(newSkills);
+                            }}
+                            className="hover:bg-indigo-200 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* My Tickets - Raised by User */}
+              <Card className="backdrop-blur-sm bg-white/90">
+                <CardHeader>
+                  <CardTitle>Tickets I Created</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {tickets.filter(t => t.createdBy === currentUser?.email || t.assignee !== currentUser?.email).length > 0 ? (
+                    <div className="space-y-3">
+                      {tickets.filter(t => t.createdBy === currentUser?.email || t.assignee !== currentUser?.email).slice(0, 5).map((ticket) => (
+                        <div key={ticket.id} className="p-4 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-neutral-900">{ticket.title}</h4>
+                              <p className="text-sm text-neutral-600 mt-1 line-clamp-2">{ticket.description}</p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge variant={getPriorityColor(ticket.priority)} className="text-xs">
+                                  {ticket.priority}
+                                </Badge>
+                                <span className="text-xs text-neutral-500">{ticket.date}</span>
+                              </div>
+                            </div>
+                            {getStatusIcon(ticket.status)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-center text-neutral-500 py-8">No tickets created yet</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Assigned Tickets */}
+              <Card className="backdrop-blur-sm bg-white/90">
+                <CardHeader>
+                  <CardTitle>Tickets Assigned to Me</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {tickets.filter(t => t.assignee === currentUser?.email).length > 0 ? (
+                    <div className="space-y-3">
+                      {tickets.filter(t => t.assignee === currentUser?.email).map((ticket) => (
+                        <div key={ticket.id} className="p-4 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-neutral-900">{ticket.title}</h4>
+                              <p className="text-sm text-neutral-600 mt-1 line-clamp-2">{ticket.description}</p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Badge variant={getPriorityColor(ticket.priority)} className="text-xs">
+                                  {ticket.priority}
+                                </Badge>
+                                <span className="text-xs text-neutral-500">{ticket.category}</span>
+                                <span className="text-xs text-neutral-500">{ticket.date}</span>
+                              </div>
+                            </div>
+                            {getStatusIcon(ticket.status)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-center text-neutral-500 py-8">No tickets assigned to you</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
 
@@ -449,6 +742,32 @@ export default function Dashboard() {
           </Button>
           <Button onClick={handleCreateTicket} disabled={loading}>
             {loading ? 'Creating...' : 'Create Ticket'}
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Helpful Notes Modal */}
+      <Modal isOpen={showNotesModal} onClose={() => setShowNotesModal(false)} className="max-w-3xl">
+        <ModalHeader onClose={() => setShowNotesModal(false)}>
+          <ModalTitle>Helpful Notes</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          {selectedTicketNotes && (
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded sticky top-0 z-10">
+                <h4 className="font-bold text-neutral-900 mb-2">{selectedTicketNotes.title}</h4>
+              </div>
+              <div className="prose prose-sm max-w-none">
+                <div className="whitespace-pre-wrap text-neutral-700 leading-relaxed">
+                  {selectedTicketNotes.notes}
+                </div>
+              </div>
+            </div>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button onClick={() => setShowNotesModal(false)}>
+            Close
           </Button>
         </ModalFooter>
       </Modal>

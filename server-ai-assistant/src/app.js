@@ -1,9 +1,9 @@
 
 //importing  
 import express from 'express'
-import { connectDB } from  "./database/db.database.js"
-import {serve} from "inngest/express";
-import {inngest} from "./AgentEvents/client.js"
+import { connectDB } from "./database/db.database.js"
+import { serve } from "inngest/express";
+import { inngest } from "./AgentEvents/client.js"
 import { onUserSignUp } from './AgentEvents/functions/on-signup.js';
 import { onTicketCreated } from './AgentEvents/functions/on-ticket-create.js';
 import cors from "cors";
@@ -26,24 +26,26 @@ app.use(cors({
 app.use(express.json({
     limit: '16kb'
 }));
-app.use(express.urlencoded({ 
+app.use(express.urlencoded({
     limit: '16kb',
-    extended: true }))
+    extended: true
+}))
 app.use(express.static('public'))
+app.use('/uploads', express.static('uploads'))
 
 
 //Inggest 
 app.use(
-  "/api/inngest",
-  serve({
-    client: inngest,
-    functions: [onUserSignUp, onTicketCreated],
-  })
+    "/api/inngest",
+    serve({
+        client: inngest,
+        functions: [onUserSignUp, onTicketCreated],
+    })
 );
 //routes
-import  userRouter  from './routes/user.route.js';
-import  ticketRouter from "./routes/ticket.route.js";
-app.use("/api/auth",  userRouter);
+import userRouter from './routes/user.route.js';
+import ticketRouter from "./routes/ticket.route.js";
+app.use("/api/auth", userRouter);
 app.use("/api/ticket", ticketRouter);
 
 
