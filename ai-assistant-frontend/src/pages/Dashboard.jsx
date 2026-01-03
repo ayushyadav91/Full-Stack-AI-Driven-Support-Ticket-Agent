@@ -24,6 +24,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs'
 import { Spinner } from '../components/ui/spinner';
 import { Modal, ModalHeader, ModalTitle, ModalBody, ModalFooter } from '../components/ui/modal';
 import { HoverEffect } from '../components/ui/card-hover-effect';
+import { ExpandableCard } from '../components/ui/expandable-card';
 
 export default function Dashboard() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -329,66 +330,56 @@ export default function Dashboard() {
                   <Spinner size="lg" />
                 </div>
               ) : (
-                <div className="grid gap-3">
-                  {moderators.map((mod, index) => (
-                    <motion.div
-                      key={mod._id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
-                      <Card className="backdrop-blur-sm bg-white/90 hover:shadow-xl transition-all">
-                        <CardContent className="p-5">
-                          <div className="flex items-center gap-6">
-                            <div className="flex-shrink-0">
-                              <div className="relative">
-                                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-indigo-100">
-                                  <span className="text-lg font-bold text-indigo-600">
-                                    {mod.email.charAt(0).toUpperCase()}
-                                  </span>
-                                </div>
-                                <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full border-2 border-white bg-green-500"></div>
-                              </div>
-                            </div>
+                <ExpandableCard
+                  cards={moderators.map((mod) => ({
+                    title: mod.email.split('@')[0],
+                    description: mod.role,
+                    ctaText: "View Profile",
+                    image: true,
+                    content: () => (
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="font-semibold text-neutral-700 mb-2">Contact Information</h4>
+                          <p className="text-sm text-neutral-600">
+                            <span className="font-medium">Email:</span> {mod.email}
+                          </p>
+                          <p className="text-sm text-neutral-600 mt-1">
+                            <span className="font-medium">Role:</span> {mod.role}
+                          </p>
+                        </div>
 
-                            <div className="min-w-0 flex-1">
-                              <h3 className="text-base font-bold text-neutral-900">{mod.email.split('@')[0]}</h3>
-                              <p className="text-sm text-neutral-600">{mod.role}</p>
+                        <div>
+                          <h4 className="font-semibold text-neutral-700 mb-2">Skills</h4>
+                          {mod.skills && mod.skills.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {mod.skills.map((skill, idx) => (
+                                <span
+                                  key={idx}
+                                  className="px-3 py-1 bg-neutral-100 text-neutral-700 rounded-full text-sm"
+                                >
+                                  {skill}
+                                </span>
+                              ))}
                             </div>
+                          ) : (
+                            <p className="text-sm text-neutral-400">No skills listed</p>
+                          )}
+                        </div>
 
-                            <div className="flex min-w-[500px] items-center gap-8">
-                              <div className="min-w-[200px]">
-                                <p className="mb-1 text-xs text-neutral-500">Email</p>
-                                <p className="truncate text-sm font-medium text-neutral-900" title={mod.email}>
-                                  {mod.email}
-                                </p>
-                              </div>
-                              <div className="flex-1">
-                                <p className="mb-1.5 text-xs text-neutral-500">Skills</p>
-                                {mod.skills && mod.skills.length > 0 ? (
-                                  <div className="flex flex-wrap gap-2">
-                                    {mod.skills.slice(0, 3).map((skill, idx) => (
-                                      <Badge key={idx} variant="default" className="text-xs">
-                                        {skill}
-                                      </Badge>
-                                    ))}
-                                    {mod.skills.length > 3 && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        +{mod.skills.length - 3}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-neutral-400">No skills</p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </div>
+                        <div>
+                          <h4 className="font-semibold text-neutral-700 mb-2">Member Since</h4>
+                          <p className="text-sm text-neutral-600">
+                            {new Date(mod.createdAt || Date.now()).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                    ),
+                  }))}
+                />
               )
             ) : (
               <Card className="backdrop-blur-sm bg-white/90">
